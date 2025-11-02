@@ -158,10 +158,10 @@
             <!-- <p class="text-purple-700 mt-2">Completa los campos para crear una pre-factura detallada.</p> -->
         </header>
 
-        <!-- CORRECCIÓN: Ajuste de la rejilla para dar más ancho a la vista previa -->
-        <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
-            <!-- Columna de Controles (ahora 2/5 partes) -->
-            <div class="bg-white p-6 rounded-2xl shadow-lg no-print space-y-8 lg:col-span-2">
+        <!-- CORRECCIÓN: Ajuste de la rejilla para que los anchos sean iguales (50/50) -->
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Columna de Controles (ahora 1/2 parte) -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg no-print space-y-8 lg:col-span-1">
                 <!-- Información General -->
                 <div>
                     <h2 class="text-2xl font-bold mb-6 border-b pb-3 text-purple-800">Información General</h2>
@@ -268,8 +268,8 @@
 
             </div>
 
-            <!-- Columna de Vista Previa (ahora 3/5 partes) -->
-            <div class="lg:col-span-3">
+            <!-- Columna de Vista Previa (ahora 1/2 parte) -->
+            <div class="lg:col-span-1">
                 <!-- AJUSTE DE TAMAÑOS DE FUENTE EN EL RECIBO (Anulados por CSS en <style>) -->
                 <div id="receipt-preview" class="bg-white p-8 rounded-2xl shadow-lg min-h-full text-gray-800">
                     <header class="flex justify-between items-start pb-4 border-b-2 border-gray-200">
@@ -878,14 +878,15 @@
                         <tr>
                             <!-- CORRECCIÓN: Se añadieron anchos (width) con style para mejor control -->
                             <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 3%;">N°</th>
-                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 10%;">Fecha</th>
-                            <!-- CAMBIO DE TEXTO: Trabajador/C.I -> Nombres/C.I -->
-                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 20%;">Nombres/C.I</th>
-                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 15%;">Paciente</th>
-                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 22%;">Servicio</th>
+                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 8%;">Fecha</th>
+                            <!-- CAMBIO DE TEXTO: Se fusionó Nombres/C.I y Paciente -->
+                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 40%;">Nombres/C.I/Paciente</th> <!-- 35% -> 40% -->
+                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 12%;">Servicio</th> <!-- 17% -> 12% -->
                             <th class="px-2 py-2 text-center font-medium text-purple-700" style="width: 5%;">Cant.</th>
-                            <th class="px-2 py-2 text-right font-medium text-purple-700" style="width: 10%;">P/U ($)</th>
-                            <th class="px-2 py-2 text-right font-medium text-purple-700" style="width: 10%;">Total ($)</th>
+                            <th class="px-2 py-2 text-right font-medium text-purple-700" style="width: 8%;">P/U ($)</th>
+                            <th class="px-2 py-2 text-right font-medium text-purple-700" style="width: 8%;">Total ($)</th>
+                            <!-- NUEVA COLUMNA: Total (Bs.) -->
+                            <th class="px-2 py-2 text-right font-medium text-purple-700" style="width: 11%;">Total (Bs.)</th>
                             <th class="no-print" style="width: 5%;"></th>
                         </tr>
                     </thead>
@@ -919,19 +920,27 @@
                 // --- INICIO DE CORRECCIÓN: Usar nuevo formato de fecha dd-mm-yy ---
                 const formattedDate = formatDateDDMMYY(item.serviceDate);
                 // --- FIN DE CORRECCIÓN ---
+                
+                // --- INICIO DE CORRECCIÓN: Calcular Total (Bs.) por item ---
+                const totalBsItem = total * bcvRate;
+                // --- FIN DE CORRECCIÓN ---
+
                 return `
                     <tr class="hover:bg-purple-50 border-b border-gray-100">
                         <td class="px-2 py-2 font-medium text-gray-500">${index + 1}</td>
                         <td class="px-2 py-2">${formattedDate}</td>
+                        <!-- CORRECCIÓN: Se fusionó Nombres/C.I y Paciente -->
                         <td class="px-2 py-2">
                             <span class="font-semibold block">${item.workerName}</span>
-                            <span class="text-gray-600">${item.workerCi}</span>
+                            <span class="text-gray-600 block">${item.workerCi}</span>
+                            ${item.patientName ? `<span class="text-purple-700" style="font-size: 7pt;">Paciente: ${item.patientName}</span>` : ''}
                         </td>
-                        <td class="px-2 py-2">${item.patientName || 'N/A'}</td>
                         <td class="px-2 py-2">${item.description}</td>
                         <td class="px-2 py-2 text-center">${item.quantity}</td>
                         <td class="px-2 py-2 text-right">${formatCurrency(item.price)}</td>
                         <td class="px-2 py-2 text-right font-medium">${formatCurrency(total)}</td>
+                        <!-- NUEVA CELDA: Total (Bs.) por item -->
+                        <td class="px-2 py-2 text-right">${formatCurrency(totalBsItem, 'VES')}</td>
                         <td class="px-1 py-2 text-center no-print">
                             <button data-item-instance="${item.instanceId}" class="delete-receipt-item-btn text-red-500 hover:text-red-700 font-bold text-lg">&times;</button>
                         </td>
@@ -1262,7 +1271,10 @@
         // --- Eventos Generales ---
         bcvRateInput.addEventListener('input', e => {
             bcvRate = parseFloat(e.target.value) || 0;
-            renderTotals();
+            // CORRECCIÓN: Llamar a renderReceiptPreview para que recalcule
+            // la tabla completa, no solo los totales.
+            // renderTotals(); <-- Esta era la línea incorrecta
+            renderReceiptPreview(); // <-- Esta es la línea correcta
         });
         
         receiptDateInput.addEventListener('input', (e) => {
@@ -1451,6 +1463,10 @@
     </script>
 </body>
 </html>
+
+
+
+
 
 
 
