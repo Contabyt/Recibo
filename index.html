@@ -871,9 +871,15 @@
         // Recibo (Vista Previa)
         // REFACTOR: renderReceiptPreview ahora crea una sola tabla plana
         const renderReceiptPreview = () => {
+            
+            // Añadir un div wrapper con overflow-x-auto para responsividad móvil
+            const tableWrapperStart = `
+                <div class="w-full overflow-x-auto">
+            `;
+
             // Se quitan las clases de tamaño de fuente de Tailwind, se controlan por CSS <style>
             const tableHeader = `
-                <table class="w-full">
+                <table class="w-full min-w-[700px]"> <!-- Añadido min-w para forzar el scroll si es necesario -->
                     <thead class="bg-purple-50">
                         <tr>
                             <!-- CORRECCIÓN: Se añadieron anchos (width) con style para mejor control -->
@@ -893,7 +899,7 @@
             `;
 
             if (receiptItems.length === 0) {
-                receiptItemsContainer.innerHTML = tableHeader + `
+                receiptItemsContainer.innerHTML = tableWrapperStart + tableHeader + `
                         <tbody>
                             <tr>
                                 <td colspan="9" class="text-center text-gray-500 py-10">
@@ -901,7 +907,8 @@
                                 </td>
                             </tr>
                         </tbody>
-                    </table>`;
+                    </table>
+                </div>`; // <-- CIERRE DEL DIV WRAPPER
                 renderTotals();
                 return;
             }
@@ -949,12 +956,12 @@
             }).join('');
 
             // Build the full table structure
-            receiptItemsContainer.innerHTML = tableHeader + `
+            receiptItemsContainer.innerHTML = tableWrapperStart + tableHeader + `
                     <tbody>
                         ${itemsHtml}
                     </tbody>
                 </table>
-            `;
+            </div>`; // <-- CIERRE DEL DIV WRAPPER
             
             renderTotals();
         };
@@ -1463,11 +1470,5 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
 
 
