@@ -7,9 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Iconos Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- jsPDF and html2canvas for PDF generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- jsPDF (Librería base) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- jsPDF-AutoTable (Para tablas nativas en PDF) -->
+    <!-- CAMBIO: Se usa una versión diferente (3.5.23) que es más estable con esta configuración de scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -490,868 +493,717 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         // --- ESTADO Y DATOS ---
-        let workers = JSON.parse(localStorage.getItem('workers')) || [];
-        let services = JSON.parse(localStorage.getItem('services')) || [];
-        let recipients = JSON.parse(localStorage.getItem('recipients')) || [
-            { id: 1, name: 'El Tunal, C.A.', rif: 'J-30024477-6', address: 'Final Av. El Cementerio, Via Caserio Morón. Quibor Edo Lara', phone: '0253-4911001' }
-        ];
-        let emitters = JSON.parse(localStorage.getItem('emitters')) || [
-            { id: 1, name: 'Dra. Isabel Cristina Vargas Silva', description: 'Ginecólogo y Obstetra', useCorrelative: false }
-        ];
-        // REFACTOR: receiptItems ahora es un array plano de objetos de servicio
         let receiptItems = [];
-        let bcvRate = 0;
-        // Correlativo de recibo (cargado desde localStorage)
+        let bcvRate = 0.0;
         let nextReceiptNumber = JSON.parse(localStorage.getItem('receiptCorrelative')) || 1;
 
+        // Cargar desde localStorage
+        let emitters = JSON.parse(localStorage.getItem('medicalReceiptEmitters')) || [
+            // { id: 1, name: "Dra. María Pérez", desc: "Ginecólogo Obstetra", useCorrelative: true }
+        ];
+        let recipients = JSON.parse(localStorage.getItem('medicalReceiptRecipients')) || [
+            // { id: 1, name: "Seguros Horizonte S.A.", rif: "J-12345678-9", address: "Av. Principal, Torre Seguros", phone: "0212-555-1234" }
+        ];
+        let workers = JSON.parse(localStorage.getItem('medicalReceiptWorkers')) || [
+            // { id: 1, name: "Juan González", ci: "V-12345678", familiar: "Ana González" }
+        ];
+        let services = JSON.parse(localStorage.getItem('medicalReceiptServices')) || [
+            // { id: 1, description: "Consulta Ginecológica", price: 60.00 },
+            // { id: 2, description: "Eco Transvaginal", price: 50.00 }
+        ];
 
-        // --- SELECTORES DEL DOM ---
-        const bcvRateInput = document.getElementById('bcv-rate');
-        const receiptDateInput = document.getElementById('receipt-date');
-        const receiptNumberInput = document.getElementById('receipt-number-input');
-        const previewDate = document.getElementById('preview-date');
-        const previewReceiptNumber = document.getElementById('preview-receipt-number');
-        // Wrapper para N° Recibo condicional
-        const previewReceiptNumberWrapper = document.getElementById('preview-receipt-number-wrapper');
-
+        // --- SELECTORES DEL DOM (COMPLETOS) ---
         
-        // Forms
+        // Formulario Principal
         const addItemForm = document.getElementById('add-item-form');
-        const workerForm = document.getElementById('worker-form');
-        const serviceForm = document.getElementById('service-form');
-        const emitterForm = document.getElementById('emitter-form');
-        const recipientForm = document.getElementById('recipient-form');
-
-        // Inputs Emisor
-        const emitterNameInput = document.getElementById('emitter-name-input');
-        const emitterDescInput = document.getElementById('emitter-desc-input');
-        const emitterEditId = document.getElementById('emitter-edit-id');
-        const emitterSubmitBtn = document.getElementById('emitter-submit-btn');
-        // Checkbox Correlativo
-        const emitterCorrelativeInput = document.getElementById('emitter-correlative-input');
-
-
-        // Inputs Receptor
-        const recipientNameInput = document.getElementById('recipient-name-input');
-        const recipientRifInput = document.getElementById('recipient-rif-input');
-        const recipientAddressInput = document.getElementById('recipient-address-input');
-        const recipientPhoneInput = document.getElementById('recipient-phone-input');
-        const recipientEditId = document.getElementById('recipient-edit-id');
-        const recipientSubmitBtn = document.getElementById('recipient-submit-btn');
-        
-        // Inputs Trabajador
-        const workerNameInput = document.getElementById('worker-name-input');
-        const workerCiInput = document.getElementById('worker-ci-input');
-        const workerFamiliarInput = document.getElementById('worker-familiar-input');
-        const workerEditId = document.getElementById('worker-edit-id');
-        const workerSubmitBtn = document.getElementById('worker-submit-btn');
-        
-        // Inputs Servicio
-        const serviceDescInput = document.getElementById('service-desc-input');
-        const servicePriceInput = document.getElementById('service-price-input');
-        // AÑADIDO: Selector para cantidad en modal
-        const serviceQuantityModalInput = document.getElementById('service-quantity-input');
-        const serviceEditId = document.getElementById('service-edit-id');
-        const serviceSubmitBtn = document.getElementById('service-submit-btn');
-
-
-        // Selects & Inputs (Main Form - AHORA DATALISTS)
         const emitterInput = document.getElementById('emitter-input');
-        const emitterSelectId = document.getElementById('emitter-select-id'); // Hidden ID
+        const emitterOptions = document.getElementById('emitter-options');
+        const emitterSelectId = document.getElementById('emitter-select-id');
         const recipientInput = document.getElementById('recipient-input');
-        const recipientSelectId = document.getElementById('recipient-select-id'); // Hidden ID
+        const recipientOptions = document.getElementById('recipient-options');
+        const recipientSelectId = document.getElementById('recipient-select-id');
+        const receiptDateInput = document.getElementById('receipt-date');
+        const bcvRateInput = document.getElementById('bcv-rate');
+        const receiptNumberInput = document.getElementById('receipt-number-input');
         const workerInput = document.getElementById('worker-input');
-        const workerSelectId = document.getElementById('worker-select-id'); // Hidden ID
-        const serviceInput = document.getElementById('service-input');
-        const serviceSelectId = document.getElementById('service-select-id'); // Hidden ID
-        
-        const workerDatalist = document.getElementById('worker-options');
-        const emitterDatalist = document.getElementById('emitter-options');
-        const recipientDatalist = document.getElementById('recipient-options');
-        const serviceDatalist = document.getElementById('service-options');
-        
+        const workerOptions = document.getElementById('worker-options');
+        const workerSelectId = document.getElementById('worker-select-id');
         const patientNameInput = document.getElementById('patient-name');
-        // NUEVO SELECTOR: Fecha del Servicio
         const serviceDateInput = document.getElementById('service-date');
+        const serviceInput = document.getElementById('service-input');
+        const serviceOptions = document.getElementById('service-options');
+        const serviceSelectId = document.getElementById('service-select-id');
         const serviceQuantityInput = document.getElementById('service-quantity');
         const servicePriceDisplay = document.getElementById('service-price-display');
 
-        // Listas de gestión (dentro de modals)
-        const workersList = document.getElementById('workers-list');
-        const servicesList = document.getElementById('services-list');
-        const recipientsList = document.getElementById('recipients-list');
-        const emittersList = document.getElementById('emitters-list');
-        
-        // Vista Previa
-        const receiptItemsContainer = document.getElementById('receipt-items-container');
-        const subtotalUsd = document.getElementById('subtotal-usd');
-        const previewBcvRate = document.getElementById('preview-bcv-rate');
-        const totalBs = document.getElementById('total-bs');
-        
-        // Preview Emitter/Recipient
+        // Vista Previa (Preview)
         const previewEmitterName = document.getElementById('preview-emitter-name');
         const previewEmitterDesc = document.getElementById('preview-emitter-desc');
-        const previewRecipientInfo = document.getElementById('preview-recipient-info');
+        const previewDate = document.getElementById('preview-date');
+        const previewReceiptNumberWrapper = document.getElementById('preview-receipt-number-wrapper');
+        const previewReceiptNumber = document.getElementById('preview-receipt-number');
         const previewRecipientName = document.getElementById('preview-recipient-name');
         const previewRecipientRif = document.getElementById('preview-recipient-rif');
         const previewRecipientAddress = document.getElementById('preview-recipient-address');
         const previewRecipientPhone = document.getElementById('preview-recipient-phone');
+        const receiptItemsContainer = document.getElementById('receipt-items-container');
+        const subtotalUsd = document.getElementById('subtotal-usd');
+        const previewBcvRate = document.getElementById('preview-bcv-rate');
+        const totalBs = document.getElementById('total-bs');
 
-
-        // Botones
+        // Botones Principales
         const downloadPdfButton = document.getElementById('download-pdf-button');
         const resetButton = document.getElementById('reset-button');
-        
-        // Modal Reseteo
         const resetModal = document.getElementById('reset-modal');
         const cancelResetBtn = document.getElementById('cancel-reset-btn');
         const confirmResetBtn = document.getElementById('confirm-reset-btn');
-        
-        // Modals Gestión y Botones
-        const emittersModal = document.getElementById('emitters-modal');
-        const recipientsModal = document.getElementById('recipients-modal');
-        const workersModal = document.getElementById('workers-modal');
-        const servicesModal = document.getElementById('services-modal');
-        
+
+        // Botones de Gestión de Catálogos
         const manageEmittersBtn = document.getElementById('manage-emitters-btn');
         const manageRecipientsBtn = document.getElementById('manage-recipients-btn');
         const manageWorkersBtn = document.getElementById('manage-workers-btn');
         const manageServicesBtn = document.getElementById('manage-services-btn');
 
+        // Modal de Emisores
+        const emittersModal = document.getElementById('emitters-modal');
         const closeEmittersModalBtn = document.getElementById('close-emitters-modal-btn');
+        const emitterForm = document.getElementById('emitter-form');
+        const emitterEditId = document.getElementById('emitter-edit-id');
+        const emitterNameInput = document.getElementById('emitter-name-input');
+        const emitterDescInput = document.getElementById('emitter-desc-input');
+        const emitterCorrelativeInput = document.getElementById('emitter-correlative-input');
+        const emitterSubmitBtn = document.getElementById('emitter-submit-btn');
+        const emittersList = document.getElementById('emitters-list');
+
+        // Modal de Receptores
+        const recipientsModal = document.getElementById('recipients-modal');
         const closeRecipientsModalBtn = document.getElementById('close-recipients-modal-btn');
+        const recipientForm = document.getElementById('recipient-form');
+        const recipientEditId = document.getElementById('recipient-edit-id');
+        const recipientNameInput = document.getElementById('recipient-name-input');
+        const recipientRifInput = document.getElementById('recipient-rif-input');
+        const recipientAddressInput = document.getElementById('recipient-address-input');
+        const recipientPhoneInput = document.getElementById('recipient-phone-input');
+        const recipientSubmitBtn = document.getElementById('recipient-submit-btn');
+        const recipientsList = document.getElementById('recipients-list');
+
+        // Modal de Pacientes (Workers)
+        const workersModal = document.getElementById('workers-modal');
         const closeWorkersModalBtn = document.getElementById('close-workers-modal-btn');
+        const workerForm = document.getElementById('worker-form');
+        const workerEditId = document.getElementById('worker-edit-id');
+        const workerNameInput = document.getElementById('worker-name-input');
+        const workerCiInput = document.getElementById('worker-ci-input');
+        const workerFamiliarInput = document.getElementById('worker-familiar-input');
+        const workerSubmitBtn = document.getElementById('worker-submit-btn');
+        const workersList = document.getElementById('workers-list');
+
+        // Modal de Servicios
+        const servicesModal = document.getElementById('services-modal');
         const closeServicesModalBtn = document.getElementById('close-services-modal-btn');
+        const serviceForm = document.getElementById('service-form');
+        const serviceEditId = document.getElementById('service-edit-id');
+        const serviceDescInput = document.getElementById('service-desc-input');
+        const servicePriceInput = document.getElementById('service-price-input');
+        const serviceQuantityModalInput = document.getElementById('service-quantity-input'); // Renombrado para evitar conflicto
+        const serviceSubmitBtn = document.getElementById('service-submit-btn');
+        const servicesList = document.getElementById('services-list');
+
 
         // --- FUNCIONES DE UTILIDAD ---
+        const formatCurrency = (value, type = 'VES') => {
+            if (type === 'USD') {
+                return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            if (type === 'PDF_USD') {
+                // Para el PDF, necesitamos un string numérico simple, no uno localizado con comas
+                return value.toFixed(2);
+            }
+            // Para VES (Bolívares)
+            return value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
         
-        const toTitleCase = (str) => {
-            if (!str) return '';
-            return str.toLowerCase().split(' ').map(word => {
-                return word.charAt(0).toUpperCase() + word.slice(1);
-            }).join(' ');
+        const formatDateDDMMYY = (dateString) => {
+            if (!dateString) return '--/--/----';
+            // Asumir que la fecha de entrada está en formato 'YYYY-MM-DD'
+            const [year, month, day] = dateString.split('-');
+            return `${day}/${month}/${year}`;
         };
 
-        const formatCi = (ci) => {
-            if (!ci) return '';
-            
-            let formattedCi = ci.toUpperCase().trim();
-            let prefixMatch = formattedCi.match(/^([VEPJG\s-]*?)?(\d+)/);
-            let numberPart = '';
-            let prefix = '';
-
-            if (prefixMatch) {
-                numberPart = prefixMatch[2].replace(/[.\-]/g, '');
-                let tempPrefix = (prefixMatch[1] || '').replace(/[\s-]/g, '');
-
-                if (tempPrefix && 'VEPJG'.includes(tempPrefix.charAt(0))) {
-                    prefix = tempPrefix.charAt(0);
-                } else if (ci.toLowerCase().includes('j')) {
-                    prefix = 'J';
-                } else {
-                    prefix = 'V'; // Default a 'V'
-                }
-            } else {
-                 return formattedCi.replace(/[.\-]/g, '');
-            }
-
-            let numberFormatted = numberPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-            let result = `${prefix}-${numberFormatted}`;
-            
-            let lastDigitMatch = ci.match(/(\d)$/);
-            if(lastDigitMatch) {
-                const originalNumberPart = ci.replace(/[^\d]/g, '');
-                const lastDigit = originalNumberPart.slice(-1);
-
-                if(!numberFormatted.endsWith(lastDigit) && numberPart.length > 7) { 
-                    const dashMatch = formattedCi.match(/(\d)-(\d)$/);
-                    if (dashMatch) {
-                        result += `-${dashMatch[2]}`;
-                    }
-                }
-            }
-            
-            return result;
-        };
-
-
-        const formatCurrency = (amount, currency = 'USD') => {
-            if (currency === 'VES') {
-                // CORRECCIÓN: Añadido maximumFractionDigits para forzar 2 decimales
-                return new Intl.NumberFormat('es-VE', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
-            }
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(amount);
-        };
-
-        // NUEVA FUNCIÓN DE UTILIDAD PARA FORMATO DE FECHA
-        const formatDateDDMMYY = (isoDate) => {
-            if (!isoDate) return '--/--/--';
-            try {
-                // Se añade T00:00:00 para asegurar que se parsee como fecha local y no UTC
-                const date = new Date(isoDate + 'T00:00:00'); 
-                const day = String(date.getDate()).padStart(2, '0');
-                const month = String(date.getMonth() + 1).padStart(2, '0'); // Meses son 0-indexados
-                const year = String(date.getFullYear()).slice(-2);
-                return `${day}-${month}-${year}`;
-            } catch (e) {
-                console.error("Error formatting date: ", isoDate, e);
-                return '--/--/--';
-            }
-        };
-
-        const saveToLocalStorage = () => {
-            localStorage.setItem('workers', JSON.stringify(workers));
-            localStorage.setItem('services', JSON.stringify(services));
-            localStorage.setItem('recipients', JSON.stringify(recipients));
-            localStorage.setItem('emitters', JSON.stringify(emitters));
-            // Guardar el correlativo también (aunque se guarda al descargar)
-            localStorage.setItem('receiptCorrelative', JSON.stringify(nextReceiptNumber));
+        const saveToLocalStorage = (key, data) => {
+            localStorage.setItem(key, JSON.stringify(data));
         };
 
         const findIdFromDatalistInput = (inputElement, datalistElement) => {
             const selectedOption = Array.from(datalistElement.options)
                 .find(option => option.value === inputElement.value);
             return selectedOption ? parseInt(selectedOption.dataset.id) : null;
-        }
+        };
+        
+        const formatCI = (ci) => {
+            let value = ci.toUpperCase().replace(/[^VEJP0-9]/g, ''); // Permitir V, E, J, P y números
+            let prefix = value.charAt(0);
+            
+            // Si no empieza con V, E, J, P, poner V por defecto si es número
+            if (!isNaN(prefix)) {
+                prefix = 'V';
+                value = 'V' + value;
+            } else {
+                value = value.substring(1); // Quitar prefijo para limpiar números
+            }
+            
+            value = value.replace(/[^0-9]/g, ''); // Limpiar solo números
+            return `${prefix}-${value}`.substring(0, 11); // Limitar longitud V-12345678
+        };
+
 
         // --- FUNCIONES DE RENDERIZADO Y POBLADO ---
 
-        // Emisores
+        // Emitters
+        const populateEmittersDatalist = () => {
+            emitterOptions.innerHTML = '';
+            emitters.forEach(e => {
+                const option = document.createElement('option');
+                option.value = `${e.name} (${e.desc})`;
+                option.dataset.id = e.id;
+                emitterOptions.appendChild(option);
+            });
+        };
         const renderEmittersList = () => {
-            emittersList.innerHTML = emitters.map(e => `
-                <li class="flex justify-between items-center p-2 bg-purple-50 rounded-md text-sm">
+            emittersList.innerHTML = '';
+            populateEmittersDatalist();
+            emitters.forEach(e => {
+                const li = document.createElement('li');
+                li.className = 'p-3 bg-purple-50 rounded-md flex justify-between items-center';
+                li.innerHTML = `
                     <div>
                         <span class="font-semibold">${e.name}</span>
-                        <span class="block text-xs text-purple-700">${e.description} ${e.useCorrelative ? '(Correl.)' : ''}</span>
+                        <span class="text-sm text-purple-700 ml-2">(${e.desc}) ${e.useCorrelative ? '<i class="fas fa-hashtag text-xs ml-1" title="Usa correlativo"></i>' : ''}</span>
                     </div>
                     <div>
-                        <button data-id="${e.id}" class="edit-emitter-btn list-btn edit-btn-list"><i class="fas fa-pencil-alt"></i></button>
-                        <button data-id="${e.id}" class="delete-emitter-btn list-btn delete-btn-list"><i class="fas fa-trash-alt"></i></button>
+                        <button class="edit-btn-list" data-id="${e.id}"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete-btn-list" data-id="${e.id}"><i class="fas fa-trash-alt"></i></button>
                     </div>
-                </li>`).join('');
-            populateEmitterDropdown();
-        };
-        const populateEmitterDropdown = () => {
-            emitterDatalist.innerHTML = emitters.map(e => 
-                `<option data-id="${e.id}" value="${e.name} (${e.description})"></option>`
-            ).join('');
-            renderEmitterPreview();
-        };
-        const renderEmitterPreview = (selectedId) => {
-            const idToUse = selectedId || emitterSelectId.value;
-            const emitter = emitters.find(e => e.id == idToUse);
-            if (emitter) {
-                previewEmitterName.textContent = emitter.name;
-                previewEmitterDesc.textContent = emitter.description;
-            } else {
-                previewEmitterName.textContent = 'Seleccione un emisor';
-                previewEmitterDesc.textContent = '...';
-            }
-        };
-        const resetEmitterForm = () => {
-            emitterForm.reset();
-            emitterEditId.value = '';
-            emitterCorrelativeInput.checked = false; // Reset checkbox
-            emitterSubmitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Añadir Emisor';
+                `;
+                emittersList.appendChild(li);
+            });
         };
 
-        // Receptores
+        // Recipients
+        const populateRecipientsDatalist = () => {
+            recipientOptions.innerHTML = '';
+            recipients.forEach(r => {
+                const option = document.createElement('option');
+                option.value = `${r.name} (${r.rif})`;
+                option.dataset.id = r.id;
+                recipientOptions.appendChild(option);
+            });
+        };
         const renderRecipientsList = () => {
-            recipientsList.innerHTML = recipients.map(r => `
-                <li class="flex justify-between items-center p-2 bg-purple-50 rounded-md text-sm">
+            recipientsList.innerHTML = '';
+            populateRecipientsDatalist();
+            recipients.forEach(r => {
+                const li = document.createElement('li');
+                li.className = 'p-3 bg-purple-50 rounded-md flex justify-between items-center';
+                li.innerHTML = `
                     <div>
                         <span class="font-semibold">${r.name}</span>
-                        <span class="block text-xs text-purple-700">${r.rif || ''}</span>
+                        <span class="text-sm text-purple-700 ml-2">(${r.rif})</span>
                     </div>
                     <div>
-                        <button data-id="${r.id}" class="edit-recipient-btn list-btn edit-btn-list"><i class="fas fa-pencil-alt"></i></button>
-                        <button data-id="${r.id}" class="delete-recipient-btn list-btn delete-btn-list"><i class="fas fa-trash-alt"></i></button>
+                        <button class="edit-btn-list" data-id="${r.id}"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete-btn-list" data-id="${r.id}"><i class="fas fa-trash-alt"></i></button>
                     </div>
-                </li>`).join('');
-            populateRecipientDropdown();
+                `;
+                recipientsList.appendChild(li);
+            });
         };
-        const populateRecipientDropdown = () => {
-             recipientDatalist.innerHTML = recipients.map(r => 
-                `<option data-id="${r.id}" value="${r.name} (${r.rif || 'Sin RIF'})"></option>`
-            ).join('');
-            renderRecipientPreview();
+
+        // Workers (Pacientes)
+        const populateWorkersDatalist = () => {
+            workerOptions.innerHTML = '';
+            workers.forEach(w => {
+                const option = document.createElement('option');
+                option.value = `${w.name} (${w.ci})`;
+                option.dataset.id = w.id;
+                workerOptions.appendChild(option);
+            });
         };
-        const renderRecipientPreview = (selectedId) => {
-            const idToUse = selectedId || recipientSelectId.value;
-            const recipient = recipients.find(r => r.id == idToUse);
-            if (recipient) {
-                previewRecipientName.textContent = recipient.name;
-                previewRecipientRif.textContent = recipient.rif ? `RIF: ${recipient.rif}` : '';
-                previewRecipientAddress.textContent = recipient.address;
-                previewRecipientPhone.textContent = recipient.phone ? `Telf: ${recipient.phone}` : '';
+        const renderWorkersList = () => {
+            workersList.innerHTML = '';
+            populateWorkersDatalist();
+            workers.forEach(w => {
+                const li = document.createElement('li');
+                li.className = 'p-3 bg-purple-50 rounded-md flex justify-between items-center';
+                li.innerHTML = `
+                    <div>
+                        <span class="font-semibold">${w.name} (${w.ci})</span>
+                        ${w.familiar ? `<span class="block text-sm text-purple-700">Familiar: ${w.familiar}</span>` : ''}
+                    </div>
+                    <div>
+                        <button class="edit-btn-list" data-id="${w.id}"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete-btn-list" data-id="${w.id}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+                workersList.appendChild(li);
+            });
+        };
+        
+        // Services
+        const populateServicesDatalist = () => {
+            serviceOptions.innerHTML = '';
+            services.forEach(s => {
+                const option = document.createElement('option');
+                option.value = `${s.description} ($${formatCurrency(s.price, 'USD')})`;
+                option.dataset.id = s.id;
+                serviceOptions.appendChild(option);
+            });
+        };
+        const renderServicesList = () => {
+            servicesList.innerHTML = '';
+            populateServicesDatalist();
+            services.forEach(s => {
+                const li = document.createElement('li');
+                li.className = 'p-3 bg-purple-50 rounded-md flex justify-between items-center';
+                li.innerHTML = `
+                    <div>
+                        <span class="font-semibold">${s.description}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-sm text-purple-900 font-bold mr-4">$${formatCurrency(s.price, 'USD')}</span>
+                        <button class="edit-btn-list" data-id="${s.id}"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete-btn-list" data-id="${s.id}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+                servicesList.appendChild(li);
+            });
+        };
+        
+        // Preview (Recibo)
+        const renderTotals = () => {
+            const subtotal = receiptItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            const total = subtotal * bcvRate;
+            
+            subtotalUsd.textContent = `$${formatCurrency(subtotal, 'USD')}`;
+            totalBs.textContent = `Bs. ${formatCurrency(total, 'VES')}`;
+            previewBcvRate.textContent = formatCurrency(bcvRate, 'VES');
+        };
+        
+        const renderReceiptPreview = () => {
+            if (receiptItems.length === 0) {
+                receiptItemsContainer.innerHTML = '<p class="text-center text-gray-500 py-10">Aún no se han agregado items al recibo.</p>';
+                renderTotals();
+                return;
+            }
+
+            // Ordenar por fecha de servicio
+            receiptItems.sort((a, b) => new Date(a.serviceDate) - new Date(b.serviceDate));
+
+            let tableHtml = `
+                <table class="w-full text-left border-t border-b border-gray-200">
+                    <thead class="bg-purple-50 text-purple-900">
+                        <tr>
+                            <th class="p-2 font-semibold">N°</th>
+                            <th class="p-2 font-semibold">Fecha Serv.</th>
+                            <th class="p-2 font-semibold">Nombres / C.I / Paciente</th>
+                            <th class="p-2 font-semibold">Servicio</th>
+                            <th class="p-2 font-semibold text-center">Cant.</th>
+                            <th class="p-2 font-semibold text-right">P/U ($)</th>
+                            <th class="p-2 font-semibold text-right">Total ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            receiptItems.forEach((item, index) => {
+                tableHtml += `
+                    <tr class="border-t border-gray-200">
+                        <td class="p-2 font-bold">${index + 1}</td>
+                        <td class="p-2">${formatDateDDMMYY(item.serviceDate)}</td>
+                        <td class="p-2">
+                            <span class="font-bold block">${item.workerName}</span>
+                            <span class="text-gray-600 block">${item.workerCi}</span>
+                            ${item.patientName ? `<span class="text-purple-700 block text-xs">Paciente: ${item.patientName}</span>` : ''}
+                        </td>
+                        <td class="p-2">${item.description}</td>
+                        <td class="p-2 text-center">${item.quantity}</td>
+                        <td class="p-2 text-right">${formatCurrency(item.price, 'USD')}</td>
+                        <td class="p-2 text-right font-bold">${formatCurrency(item.price * item.quantity, 'USD')}</td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += '</tbody></table>';
+            receiptItemsContainer.innerHTML = tableHtml;
+            renderTotals();
+        };
+
+
+        // --- MANEJADORES DE EVENTOS ---
+
+        // Eventos de Modals (Abrir/Cerrar)
+        manageEmittersBtn.addEventListener('click', () => emittersModal.classList.remove('hidden'));
+        closeEmittersModalBtn.addEventListener('click', () => emittersModal.classList.add('hidden'));
+
+        manageRecipientsBtn.addEventListener('click', () => recipientsModal.classList.remove('hidden'));
+        closeRecipientsModalBtn.addEventListener('click', () => recipientsModal.classList.add('hidden'));
+
+        manageWorkersBtn.addEventListener('click', () => workersModal.classList.remove('hidden'));
+        closeWorkersModalBtn.addEventListener('click', () => workersModal.classList.add('hidden'));
+        
+        manageServicesBtn.addEventListener('click', () => servicesModal.classList.remove('hidden'));
+        closeServicesModalBtn.addEventListener('click', () => servicesModal.classList.add('hidden'));
+
+        // Eventos de Forms de Gestión (Submit)
+        emitterForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = parseInt(emitterEditId.value);
+            const name = emitterNameInput.value.trim();
+            const desc = emitterDescInput.value.trim();
+            const useCorrelative = emitterCorrelativeInput.checked;
+
+            if (id) { // Editando
+                const index = emitters.findIndex(e => e.id === id);
+                if (index !== -1) {
+                    emitters[index] = { id, name, desc, useCorrelative };
+                }
+            } else { // Creando
+                const newId = emitters.length > 0 ? Math.max(...emitters.map(e => e.id)) + 1 : 1;
+                emitters.push({ id: newId, name, desc, useCorrelative });
+            }
+            
+            saveToLocalStorage('medicalReceiptEmitters', emitters);
+            renderEmittersList();
+            emitterForm.reset();
+            emitterEditId.value = '';
+            emitterSubmitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Añadir Emisor';
+        });
+
+        recipientForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = parseInt(recipientEditId.value);
+            const name = recipientNameInput.value.trim();
+            const rif = recipientRifInput.value.trim();
+            const address = recipientAddressInput.value.trim();
+            const phone = recipientPhoneInput.value.trim();
+
+            if (id) { // Editando
+                const index = recipients.findIndex(r => r.id === id);
+                if (index !== -1) {
+                    recipients[index] = { id, name, rif, address, phone };
+                }
+            } else { // Creando
+                const newId = recipients.length > 0 ? Math.max(...recipients.map(r => r.id)) + 1 : 1;
+                recipients.push({ id: newId, name, rif, address, phone });
+            }
+            
+            saveToLocalStorage('medicalReceiptRecipients', recipients);
+            renderRecipientsList();
+            recipientForm.reset();
+            recipientEditId.value = '';
+            recipientSubmitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Añadir Ente';
+        });
+
+        workerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = parseInt(workerEditId.value);
+            const name = workerNameInput.value.trim();
+            const ci = workerCiInput.value.trim();
+            const familiar = workerFamiliarInput.value.trim();
+
+            if (id) { // Editando
+                const index = workers.findIndex(w => w.id === id);
+                if (index !== -1) {
+                    workers[index] = { id, name, ci, familiar };
+                }
+            } else { // Creando
+                const newId = workers.length > 0 ? Math.max(...workers.map(w => w.id)) + 1 : 1;
+                workers.push({ id: newId, name, ci, familiar });
+            }
+            
+            saveToLocalStorage('medicalReceiptWorkers', workers);
+            renderWorkersList();
+            workerForm.reset();
+            workerEditId.value = '';
+            workerSubmitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Añadir Paciente';
+        });
+        
+        serviceForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = parseInt(serviceEditId.value);
+            const description = serviceDescInput.value.trim();
+            const total = parseFloat(servicePriceInput.value);
+            const quantity = parseInt(serviceQuantityModalInput.value);
+            
+            if (isNaN(total) || isNaN(quantity) || quantity < 1 || total <= 0) {
+                alert("Por favor, ingrese un precio y cantidad válidos."); // Reemplazar por modal si se desea
+                return;
+            }
+            
+            const price = total / quantity; // Calcular P/U
+
+            if (id) { // Editando
+                const index = services.findIndex(s => s.id === id);
+                if (index !== -1) {
+                    services[index] = { id, description, price };
+                }
+            } else { // Creando
+                const newId = services.length > 0 ? Math.max(...services.map(s => s.id)) + 1 : 1;
+                services.push({ id: newId, description, price });
+            }
+            
+            saveToLocalStorage('medicalReceiptServices', services);
+            renderServicesList();
+            serviceForm.reset();
+            serviceEditId.value = '';
+            serviceQuantityModalInput.value = '1';
+            serviceSubmitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Añadir';
+        });
+
+        // Eventos de Listas (Edit/Delete)
+        emittersList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-btn-list');
+            const deleteBtn = e.target.closest('.delete-btn-list');
+            
+            if (editBtn) {
+                const id = parseInt(editBtn.dataset.id);
+                const emitter = emitters.find(e => e.id === id);
+                if (emitter) {
+                    emitterEditId.value = emitter.id;
+                    emitterNameInput.value = emitter.name;
+                    emitterDescInput.value = emitter.desc;
+                    emitterCorrelativeInput.checked = emitter.useCorrelative;
+                    emitterSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
+                }
+            }
+            if (deleteBtn) {
+                const id = parseInt(deleteBtn.dataset.id);
+                // Aquí se podría usar un modal de confirmación
+                emitters = emitters.filter(e => e.id !== id);
+                saveToLocalStorage('medicalReceiptEmitters', emitters);
+                renderEmittersList();
+            }
+        });
+
+        recipientsList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-btn-list');
+            const deleteBtn = e.target.closest('.delete-btn-list');
+            
+            if (editBtn) {
+                const id = parseInt(editBtn.dataset.id);
+                const recipient = recipients.find(r => r.id === id);
+                if (recipient) {
+                    recipientEditId.value = recipient.id;
+                    recipientNameInput.value = recipient.name;
+                    recipientRifInput.value = recipient.rif;
+                    recipientAddressInput.value = recipient.address;
+                    recipientPhoneInput.value = recipient.phone;
+                    recipientSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
+                }
+            }
+            if (deleteBtn) {
+                const id = parseInt(deleteBtn.dataset.id);
+                recipients = recipients.filter(r => r.id !== id);
+                saveToLocalStorage('medicalReceiptRecipients', recipients);
+                renderRecipientsList();
+            }
+        });
+        
+        workersList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-btn-list');
+            const deleteBtn = e.target.closest('.delete-btn-list');
+            
+            if (editBtn) {
+                const id = parseInt(editBtn.dataset.id);
+                const worker = workers.find(w => w.id === id);
+                if (worker) {
+                    workerEditId.value = worker.id;
+                    workerNameInput.value = worker.name;
+                    workerCiInput.value = worker.ci;
+                    workerFamiliarInput.value = worker.familiar;
+                    workerSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
+                }
+            }
+            if (deleteBtn) {
+                const id = parseInt(deleteBtn.dataset.id);
+                workers = workers.filter(w => w.id !== id);
+                saveToLocalStorage('medicalReceiptWorkers', workers);
+                renderWorkersList();
+            }
+        });
+        
+        servicesList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-btn-list');
+            const deleteBtn = e.target.closest('.delete-btn-list');
+            
+            if (editBtn) {
+                const id = parseInt(editBtn.dataset.id);
+                const service = services.find(s => s.id === id);
+                if (service) {
+                    serviceEditId.value = service.id;
+                    serviceDescInput.value = service.description;
+                    servicePriceInput.value = service.price.toFixed(2);
+                    serviceQuantityModalInput.value = '1'; // Resetear a 1
+                    serviceSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
+                }
+            }
+            if (deleteBtn) {
+                const id = parseInt(deleteBtn.dataset.id);
+                services = services.filter(s => s.id !== id);
+                saveToLocalStorage('medicalReceiptServices', services);
+                renderServicesList();
+            }
+        });
+
+
+        // Eventos del Form Principal (Añadir a Recibo)
+        addItemForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const workerId = findIdFromDatalistInput(workerInput, workerOptions);
+            const serviceId = findIdFromDatalistInput(serviceInput, serviceOptions);
+            const quantity = parseInt(serviceQuantityInput.value);
+            const serviceDate = serviceDateInput.value;
+            
+            const worker = workers.find(w => w.id === workerId);
+            const service = services.find(s => s.id === serviceId);
+            
+            if (!worker || !service || isNaN(quantity) || quantity < 1 || !serviceDate) {
+                 // Aquí se podría usar un modal de error
+                console.warn("Datos incompletos para añadir item.");
+                return;
+            }
+            
+            const patientName = patientNameInput.value.trim() || worker.familiar; // Usar input o familiar por defecto
+
+            receiptItems.push({
+                id: Date.now(), // ID simple para el item del recibo
+                workerName: worker.name,
+                workerCi: worker.ci,
+                patientName: patientName,
+                serviceDate: serviceDate,
+                description: service.description,
+                price: service.price,
+                quantity: quantity
+            });
+            
+            renderReceiptPreview();
+            
+            // Limpiar campos del formulario
+            workerInput.value = '';
+            workerSelectId.value = '';
+            patientNameInput.value = '';
+            serviceInput.value = '';
+            serviceSelectId.value = '';
+            serviceQuantityInput.value = '1';
+            servicePriceDisplay.textContent = '$0.00';
+            // Poner fecha de servicio en la fecha de hoy (o la del recibo)
+            serviceDateInput.value = receiptDateInput.value || new Date().toISOString().split('T')[0];
+        });
+
+        // Eventos Generales (Inputs que afectan la UI)
+        bcvRateInput.addEventListener('input', () => {
+            bcvRate = parseFloat(bcvRateInput.value) || 0.0;
+            renderTotals();
+        });
+        
+        receiptDateInput.addEventListener('input', () => {
+            const date = new Date(receiptDateInput.value + 'T00:00:00-04:00'); // Ajustar a zona horaria Vzla
+            previewDate.textContent = date.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
+            // Sincronizar fecha de servicio por defecto
+            if (!serviceDateInput.value) {
+                serviceDateInput.value = receiptDateInput.value;
+            }
+        });
+
+        emitterInput.addEventListener('input', () => {
+            const id = findIdFromDatalistInput(emitterInput, emitterOptions);
+            if (id) {
+                const emitter = emitters.find(e => e.id === id);
+                previewEmitterName.textContent = emitter.name;
+                previewEmitterDesc.textContent = emitter.desc;
+                emitterSelectId.value = emitter.id;
+                
+                // Lógica de Correlativo
+                if (emitter.useCorrelative) {
+                    receiptNumberInput.value = String(nextReceiptNumber).padStart(3, '0');
+                    receiptNumberInput.disabled = true;
+                    // Disparar evento de input para actualizar preview
+                    receiptNumberInput.dispatchEvent(new Event('input'));
+                } else {
+                    receiptNumberInput.disabled = false;
+                }
+            } else {
+                previewEmitterName.textContent = 'Nombre del Emisor';
+                previewEmitterDesc.textContent = 'Descripción';
+                emitterSelectId.value = '';
+                receiptNumberInput.disabled = false;
+            }
+        });
+        
+        recipientInput.addEventListener('input', () => {
+            const id = findIdFromDatalistInput(recipientInput, recipientOptions);
+            if (id) {
+                const r = recipients.find(r => r.id === id);
+                previewRecipientName.textContent = r.name;
+                previewRecipientRif.textContent = r.rif;
+                previewRecipientAddress.textContent = r.address;
+                previewRecipientPhone.textContent = r.phone;
+                recipientSelectId.value = r.id;
             } else {
                 previewRecipientName.textContent = 'Seleccione un ente receptor';
                 previewRecipientRif.textContent = '';
                 previewRecipientAddress.textContent = '';
                 previewRecipientPhone.textContent = '';
-            }
-        };
-        const resetRecipientForm = () => {
-            recipientForm.reset();
-            recipientEditId.value = '';
-            recipientSubmitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Añadir Ente';
-        };
-
-        // Trabajadores
-        const renderWorkersList = () => {
-            workersList.innerHTML = workers.map(w => `
-                <li class="flex justify-between items-center p-2 bg-purple-50 rounded-md text-sm">
-                    <div>
-                        <span class="font-semibold">${w.name} - ${w.ci}</span>
-                        ${w.familiar ? `<span class="block text-xs text-purple-700">Familiar: ${w.familiar}</span>` : ''}
-                    </div>
-                    <div>
-                        <button data-id="${w.id}" class="edit-worker-btn list-btn edit-btn-list"><i class="fas fa-pencil-alt"></i></button>
-                        <button data-id="${w.id}" class="delete-worker-btn list-btn delete-btn-list"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                </li>`).join('');
-            populateWorkerDropdown();
-        };
-        const populateWorkerDropdown = () => {
-            workerDatalist.innerHTML = workers.map(w => 
-                `<option data-id="${w.id}" value="${w.name} - ${w.ci}"></option>`
-            ).join('');
-        };
-        const resetWorkerForm = () => {
-            workerForm.reset();
-            workerEditId.value = '';
-            // CAMBIO DE TEXTO: Añadir Trabajador -> Añadir Paciente
-            workerSubmitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Añadir Paciente';
-        };
-
-        // Servicios
-        const renderServicesList = () => {
-            // ACTUALIZADO: Mostrar Cant, P/U y Total
-            servicesList.innerHTML = services.map(s => {
-                const quantity = s.quantity || 1;
-                const unitPrice = s.price / quantity;
-                return `
-                <li class="flex justify-between items-center p-2 bg-purple-50 rounded-md text-sm">
-                    <div>
-                        <span class="font-semibold">${s.description}</span>
-                        <span class="block text-xs text-purple-700">Cant: ${quantity} | P/U: ${formatCurrency(unitPrice)}</span>
-                    </div>
-                    <div class="flex items-center">
-                        <span class="font-semibold text-sm mr-4">Total: ${formatCurrency(s.price)}</span>
-                        <button data-id="${s.id}" class="edit-service-btn list-btn edit-btn-list"><i class="fas fa-pencil-alt"></i></button>
-                        <button data-id="${s.id}" class="delete-service-btn list-btn delete-btn-list"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                </li>
-                `}).join('');
-            populateServiceDropdown();
-        };
-        const populateServiceDropdown = () => {
-            // ACTUALIZADO: Mostrar P/U en dropdown
-            serviceDatalist.innerHTML = services.map(s => {
-                const unitPrice = s.price / (s.quantity || 1);
-                // CORRECCIÓN: Se elimina el precio del 'value' del datalist
-                return `<option data-id="${s.id}" value="${s.description}"></option>`
-            }).join('');
-            updatePriceDisplay();
-        };
-        const updatePriceDisplay = () => {
-            // ACTUALIZADO: Mostrar P/U en P/U Display
-            const selectedServiceId = serviceSelectId.value;
-            const service = services.find(s => s.id == selectedServiceId);
-            const unitPrice = service ? service.price / (service.quantity || 1) : 0;
-            servicePriceDisplay.textContent = service ? formatCurrency(unitPrice) : '$0.00';
-        };
-        const resetServiceForm = () => {
-            serviceForm.reset();
-            serviceEditId.value = '';
-            serviceQuantityModalInput.value = 1; // Resetear cantidad
-            serviceSubmitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Añadir';
-        };
-        
-        // Recibo (Vista Previa)
-        // REFACTOR: renderReceiptPreview ahora crea una sola tabla plana
-        const renderReceiptPreview = () => {
-            
-            // Añadir un div wrapper con overflow-x-auto para responsividad móvil
-            const tableWrapperStart = `
-                <div class="w-full overflow-x-auto">
-            `;
-
-            // Se quitan las clases de tamaño de fuente de Tailwind, se controlan por CSS <style>
-            const tableHeader = `
-                <table class="w-full min-w-[700px]"> <!-- Añadido min-w para forzar el scroll si es necesario -->
-                    <thead class="bg-purple-50">
-                        <tr>
-                            <!-- CORRECCIÓN: Se añadieron anchos (width) con style para mejor control -->
-                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 3%;">N°</th>
-                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 8%;">Fecha</th>
-                            <!-- CAMBIO DE TEXTO: Se fusionó Nombres/C.I y Paciente -->
-                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 40%;">Nombres/C.I/Paciente</th> <!-- 35% -> 40% -->
-                            <th class="px-2 py-2 text-left font-medium text-purple-700" style="width: 12%;">Servicio</th> <!-- 17% -> 12% -->
-                            <th class="px-2 py-2 text-center font-medium text-purple-700" style="width: 5%;">Cant.</th>
-                            <th class="px-2 py-2 text-right font-medium text-purple-700" style="width: 8%;">P/U ($)</th>
-                            <th class="px-2 py-2 text-right font-medium text-purple-700" style="width: 8%;">Total ($)</th>
-                            <!-- NUEVA COLUMNA: Total (Bs.) -->
-                            <th class="px-2 py-2 text-right font-medium text-purple-700" style="width: 11%;">Total (Bs.)</th>
-                            <th class="no-print" style="width: 5%;"></th>
-                        </tr>
-                    </thead>
-            `;
-
-            if (receiptItems.length === 0) {
-                receiptItemsContainer.innerHTML = tableWrapperStart + tableHeader + `
-                        <tbody>
-                            <tr>
-                                <td colspan="9" class="text-center text-gray-500 py-10">
-                                    Aún no se han agregado items al recibo.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>`; // <-- CIERRE DEL DIV WRAPPER
-                renderTotals();
-                return;
-            }
-            
-            // --- INICIO DE CORRECCIÓN: Ordenar por fecha de servicio ---
-            receiptItems.sort((a, b) => {
-                // Se crean fechas para asegurar una comparación correcta
-                const dateA = new Date(a.serviceDate + 'T00:00:00');
-                const dateB = new Date(b.serviceDate + 'T00:00:00');
-                return dateA - dateB;
-            });
-            // --- FIN DE CORRECCIÓN ---
-
-            const itemsHtml = receiptItems.map((item, index) => {
-                const total = item.quantity * item.price;
-                // --- INICIO DE CORRECCIÓN: Usar nuevo formato de fecha dd-mm-yy ---
-                const formattedDate = formatDateDDMMYY(item.serviceDate);
-                // --- FIN DE CORRECCIÓN ---
-                
-                // --- INICIO DE CORRECCIÓN: Calcular Total (Bs.) por item ---
-                const totalBsItem = total * bcvRate;
-                // --- FIN DE CORRECCIÓN ---
-
-                return `
-                    <tr class="hover:bg-purple-50 border-b border-gray-100">
-                        <td class="px-2 py-2 font-medium text-gray-500">${index + 1}</td>
-                        <td class="px-2 py-2">${formattedDate}</td>
-                        <!-- CORRECCIÓN: Se fusionó Nombres/C.I y Paciente -->
-                        <td class="px-2 py-2">
-                            <span class="font-semibold block">${item.workerName}</span>
-                            <span class="text-gray-600 block">${item.workerCi}</span>
-                            ${item.patientName ? `<span class="text-purple-700" style="font-size: 7pt;">Paciente: ${item.patientName}</span>` : ''}
-                        </td>
-                        <td class="px-2 py-2">${item.description}</td>
-                        <td class="px-2 py-2 text-center">${item.quantity}</td>
-                        <td class="px-2 py-2 text-right">${formatCurrency(item.price)}</td>
-                        <td class="px-2 py-2 text-right font-medium">${formatCurrency(total)}</td>
-                        <!-- NUEVA CELDA: Total (Bs.) por item -->
-                        <td class="px-2 py-2 text-right">${formatCurrency(totalBsItem, 'VES')}</td>
-                        <td class="px-1 py-2 text-center no-print">
-                            <button data-item-instance="${item.instanceId}" class="delete-receipt-item-btn text-red-500 hover:text-red-700 font-bold text-lg">&times;</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            // Build the full table structure
-            receiptItemsContainer.innerHTML = tableWrapperStart + tableHeader + `
-                    <tbody>
-                        ${itemsHtml}
-                    </tbody>
-                </table>
-            </div>`; // <-- CIERRE DEL DIV WRAPPER
-            
-            renderTotals();
-        };
-
-        // REFACTOR: renderTotals ahora es más simple
-        const renderTotals = () => {
-            const subtotal = receiptItems.reduce((total, item) => {
-                return total + (item.quantity * item.price);
-            }, 0);
-
-            const totalInBs = subtotal * bcvRate;
-
-            subtotalUsd.textContent = formatCurrency(subtotal);
-            previewBcvRate.textContent = bcvRate.toFixed(2);
-            totalBs.textContent = `Bs. ${formatCurrency(totalInBs, 'VES')}`;
-        };
-        
-
-        // --- MANEJADORES de EVENTOS ---
-        
-        // --- Eventos de Modals (Se mantienen iguales) ---
-        manageEmittersBtn.addEventListener('click', () => emittersModal.classList.remove('hidden'));
-        closeEmittersModalBtn.addEventListener('click', () => { emittersModal.classList.add('hidden'); resetEmitterForm(); });
-        
-        manageRecipientsBtn.addEventListener('click', () => recipientsModal.classList.remove('hidden'));
-        closeRecipientsModalBtn.addEventListener('click', () => { recipientsModal.classList.add('hidden'); resetRecipientForm(); });
-
-        manageWorkersBtn.addEventListener('click', () => workersModal.classList.remove('hidden'));
-        closeWorkersModalBtn.addEventListener('click', () => { workersModal.classList.add('hidden'); resetWorkerForm(); });
-
-        manageServicesBtn.addEventListener('click', () => servicesModal.classList.remove('hidden'));
-        closeServicesModalBtn.addEventListener('click', () => { servicesModal.classList.add('hidden'); resetServiceForm(); });
-
-        // --- Eventos de Forms de Gestión ---
-
-        // Emisor Form (ACTUALIZADO con correlativo)
-        emitterForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = toTitleCase(emitterNameInput.value);
-            const description = toTitleCase(emitterDescInput.value);
-            const useCorrelative = emitterCorrelativeInput.checked; // Get checkbox value
-            const editId = emitterEditId.value;
-
-            if (editId) {
-                const emitter = emitters.find(e => e.id == editId);
-                if (emitter) {
-                    emitter.name = name;
-                    emitter.description = description;
-                    emitter.useCorrelative = useCorrelative; // Save checkbox value
-                }
-            } else {
-                emitters.push({ id: Date.now(), name, description, useCorrelative }); // Save checkbox value
-            }
-            saveToLocalStorage();
-            renderEmittersList(); 
-            resetEmitterForm();
-            if(emitterSelectId.value == editId) renderEmitterPreview(editId);
-        });
-
-        // Receptor Form
-        recipientForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const editId = recipientEditId.value;
-            const data = {
-                name: toTitleCase(recipientNameInput.value),
-                rif: formatCi(recipientRifInput.value),
-                address: recipientAddressInput.value,
-                phone: recipientPhoneInput.value,
-            };
-
-            if (editId) {
-                const recipient = recipients.find(r => r.id == editId);
-                if (recipient) {
-                    Object.assign(recipient, data);
-                }
-            } else {
-                recipients.push({ id: Date.now(), ...data });
-            }
-            saveToLocalStorage();
-            renderRecipientsList();
-            resetRecipientForm();
-            if(recipientSelectId.value == editId) renderRecipientPreview(editId);
-        });
-
-        // Trabajador Form
-        workerForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = toTitleCase(workerNameInput.value);
-            const ci = formatCi(workerCiInput.value);
-            const familiar = toTitleCase(workerFamiliarInput.value.trim());
-            const editId = workerEditId.value;
-
-            if (editId) {
-                const worker = workers.find(w => w.id == editId);
-                if (worker) {
-                    worker.name = name;
-                    worker.ci = ci;
-                    worker.familiar = familiar;
-                }
-            } else {
-                if (name && ci) {
-                    workers.push({ id: Date.now(), name, ci, familiar });
-                }
-            }
-            saveToLocalStorage();
-            renderWorkersList();
-            resetWorkerForm();
-        });
-
-        // Servicio Form
-        serviceForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const description = serviceDescInput.value;
-            const price = parseFloat(servicePriceInput.value);
-            const quantity = parseInt(serviceQuantityModalInput.value) || 1; // OBTENER CANTIDAD
-            const editId = serviceEditId.value;
-
-            if (description && price >= 0) {
-                 if (editId) {
-                    const service = services.find(s => s.id == editId);
-                    if (service) {
-                        service.description = description;
-                        service.price = price;
-                        service.quantity = quantity; // GUARDAR CANTIDAD
-                    }
-                } else {
-                    services.push({ id: Date.now(), description, price, quantity }); // GUARDAR CANTIDAD
-                }
-                saveToLocalStorage();
-                renderServicesList();
-                resetServiceForm();
-            }
-        });
-
-        // --- Eventos de Listas (Edit/Delete) ---
-        
-        // Lista Emisores (ACTUALIZADO con correlativo)
-        emittersList.addEventListener('click', e => {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-            const id = parseInt(btn.dataset.id);
-            
-            if (btn.classList.contains('delete-emitter-btn')) {
-                emitters = emitters.filter(e => e.id !== id);
-                saveToLocalStorage();
-                renderEmittersList();
-                if (emitterEditId.value == id) resetEmitterForm();
-                if(emitterSelectId.value == id) { emitterInput.value = ''; emitterSelectId.value = ''; renderEmitterPreview(); }
-            }
-            if (btn.classList.contains('edit-emitter-btn')) {
-                const emitter = emitters.find(e => e.id === id);
-                if (emitter) {
-                    emitterNameInput.value = emitter.name; 
-                    emitterDescInput.value = emitter.description;
-                    emitterCorrelativeInput.checked = emitter.useCorrelative || false; // Set checkbox
-                    emitterEditId.value = id;
-                    emitterSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
-                    emitterNameInput.focus();
-                }
+                recipientSelectId.value = '';
             }
         });
         
-        // Lista Receptores
-        recipientsList.addEventListener('click', e => {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-            const id = parseInt(btn.dataset.id);
-
-            if (btn.classList.contains('delete-recipient-btn')) {
-                recipients = recipients.filter(r => r.id !== id);
-                saveToLocalStorage();
-                renderRecipientsList();
-                if (recipientEditId.value == id) resetRecipientForm();
-                if(recipientSelectId.value == id) { recipientInput.value = ''; recipientSelectId.value = ''; renderRecipientPreview(); }
-            }
-            if (btn.classList.contains('edit-recipient-btn')) {
-                const recipient = recipients.find(r => r.id === id);
-                if (recipient) {
-                    recipientNameInput.value = recipient.name;
-                    recipientRifInput.value = recipient.rif;
-                    recipientAddressInput.value = recipient.address;
-                    recipientPhoneInput.value = recipient.phone;
-                    recipientEditId.value = id;
-                    recipientSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
-                    recipientNameInput.focus();
-                }
-            }
-        });
-        
-        // Lista Trabajadores
-        workersList.addEventListener('click', e => {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-            const id = parseInt(btn.dataset.id);
-
-            if (btn.classList.contains('delete-worker-btn')) {
-                workers = workers.filter(w => w.id !== id);
-                saveToLocalStorage();
-                renderWorkersList();
-                if (workerEditId.value == id) resetWorkerForm();
-                if(workerSelectId.value == id) { workerInput.value = ''; workerSelectId.value = ''; }
-            }
-            if (btn.classList.contains('edit-worker-btn')) {
-                const worker = workers.find(w => w.id === id);
-                if (worker) {
-                    workerNameInput.value = worker.name;
-                    workerCiInput.value = worker.ci;
-                    workerFamiliarInput.value = worker.familiar || '';
-                    workerEditId.value = id;
-                    workerSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
-                    workerNameInput.focus();
-                }
-            }
-        });
-
-        // Lista Servicios
-        servicesList.addEventListener('click', e => {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-            const id = parseInt(btn.dataset.id);
-
-            if (btn.classList.contains('delete-service-btn')) {
-                services = services.filter(s => s.id !== id);
-                saveToLocalStorage();
-                renderServicesList();
-                 if (serviceEditId.value == id) resetServiceForm();
-                 if(serviceSelectId.value == id) { serviceInput.value = ''; serviceSelectId.value = ''; updatePriceDisplay(); }
-            }
-            if (btn.classList.contains('edit-service-btn')) {
-                const service = services.find(s => s.id === id);
-                if (service) {
-                    serviceDescInput.value = service.description;
-                    servicePriceInput.value = service.price;
-                    serviceQuantityModalInput.value = service.quantity || 1; // LLENAR CANTIDAD
-                    serviceEditId.value = id;
-                    serviceSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar';
-                    serviceDescInput.focus();
-                }
-            }
-        });
-
-        // --- Eventos del Form Principal (Añadir a Recibo) ---
-
-        // REFACTOR: El submit ahora crea un item plano
-        addItemForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const selectedWorkerId = parseInt(workerSelectId.value);
-            const selectedServiceId = parseInt(serviceSelectId.value);
-            const quantity = parseInt(serviceQuantityInput.value);
-            const serviceDate = serviceDateInput.value;
-            
-            let patientName = toTitleCase(patientNameInput.value.trim());
-
-            if (!selectedWorkerId || !selectedServiceId || quantity < 1 || !serviceDate) {
-                if (!selectedWorkerId) workerInput.style.border = '1px solid red'; else workerInput.style.border = '1px solid #ccc';
-                if (!selectedServiceId) serviceInput.style.border = '1px solid red'; else serviceInput.style.border = '1px solid #ccc';
-                if (!serviceDate) serviceDateInput.style.border = '1px solid red'; else serviceDateInput.style.border = '1px solid #ccc';
-                return;
-            } else {
-                 workerInput.style.border = '1px solid #ccc';
-                 serviceInput.style.border = '1px solid #ccc';
-                 serviceDateInput.style.border = '1px solid #ccc';
-            }
-            
-            const worker = workers.find(w => w.id === selectedWorkerId);
-            const service = services.find(s => s.id === selectedServiceId);
-            
-            // OBTENER PRECIO UNITARIO
-            const unitPrice = service.price / (service.quantity || 1);
-            
-            if (!patientName && worker.familiar) {
-                patientName = worker.familiar;
-            }
-
-            const newItem = {
-                instanceId: Date.now(),
-                workerId: worker.id,
-                workerName: worker.name,
-                workerCi: worker.ci,
-                patientName: patientName,
-                serviceId: service.id,
-                description: service.description,
-                price: unitPrice, // GUARDAR PRECIO UNITARIO
-                quantity: quantity,
-                serviceDate: serviceDate
-            };
-            
-            receiptItems.push(newItem);
-            renderReceiptPreview();
-            
-            const today = new Date().toISOString().split('T')[0];
-            addItemForm.reset();
-            serviceQuantityInput.value = "1";
-            serviceInput.value = ''; 
-            workerInput.value = ''; 
-            serviceSelectId.value = ''; 
-            workerSelectId.value = ''; 
-            patientNameInput.value = ''; 
-            serviceDateInput.value = today;
-            updatePriceDisplay();
-        });
-        
-        // REFACTOR: Borrar item del recibo ahora usa el array plano
-        receiptItemsContainer.addEventListener('click', e => {
-            const btn = e.target.closest('button');
-            if (btn && btn.classList.contains('delete-receipt-item-btn')) {
-                const instanceId = parseInt(btn.dataset.itemInstance); 
-                receiptItems = receiptItems.filter(item => item.instanceId !== instanceId);
-                renderReceiptPreview();
-            }
-        });
-
-        // --- Eventos Generales ---
-        bcvRateInput.addEventListener('input', e => {
-            bcvRate = parseFloat(e.target.value) || 0;
-            // CORRECCIÓN: Llamar a renderReceiptPreview para que recalcule
-            // la tabla completa, no solo los totales.
-            // renderTotals(); <-- Esta era la línea incorrecta
-            renderReceiptPreview(); // <-- Esta es la línea correcta
-        });
-        
-        receiptDateInput.addEventListener('input', (e) => {
-            previewDate.textContent = e.target.value ? new Date(e.target.value + 'T00:00:00').toLocaleDateString('es-VE') : '--/--/----';
-        });
-        
-        // N° Recibo (ACTUALIZADO para condicional)
-        receiptNumberInput.addEventListener('input', (e) => {
-            const number = e.target.value;
-            if (number) {
-                previewReceiptNumber.textContent = number;
-                previewReceiptNumberWrapper.style.display = 'block';
-            } else {
-                previewReceiptNumber.textContent = 'N/A';
-                previewReceiptNumberWrapper.style.display = 'none';
-            }
-        });
-        
-        // Listeners para Datalists (Actualizar Hidden ID y Preview)
-        // ACTUALIZADO con lógica de correlativo
-        emitterInput.addEventListener('input', () => {
-            const id = findIdFromDatalistInput(emitterInput, emitterDatalist);
-            emitterSelectId.value = id || '';
-            renderEmitterPreview(id);
-            
-            // Lógica de Correlativo
-            const selectedEmitter = emitters.find(e => e.id === id);
-            if (selectedEmitter && selectedEmitter.useCorrelative) {
-                // Cargar el *próximo* número guardado
-                nextReceiptNumber = JSON.parse(localStorage.getItem('receiptCorrelative')) || 1;
-                receiptNumberInput.value = String(nextReceiptNumber).padStart(3, '0');
-                receiptNumberInput.disabled = true;
-            } else {
-                receiptNumberInput.disabled = false;
-                // No limpiamos el valor, para que el opcional manual persista
-                // receiptNumberInput.value = ''; 
-            }
-            // Disparar el evento de input manually para actualizar la vista previa
-            receiptNumberInput.dispatchEvent(new Event('input'));
-        });
-
-        recipientInput.addEventListener('input', () => {
-            const id = findIdFromDatalistInput(recipientInput, recipientDatalist);
-            recipientSelectId.value = id || '';
-            renderRecipientPreview(id);
-        });
-
         workerInput.addEventListener('input', () => {
-            const id = findIdFromDatalistInput(workerInput, workerDatalist);
-            workerSelectId.value = id || '';
-            
-            const selectedWorker = workers.find(w => w.id === id);
-            patientNameInput.value = selectedWorker && selectedWorker.familiar ? selectedWorker.familiar : '';
-        });
-
-        serviceInput.addEventListener('input', () => {
-            const id = findIdFromDatalistInput(serviceInput, serviceDatalist);
-            serviceSelectId.value = id || '';
-            
-            // --- INICIO DE CORRECCIÓN: Tomar cantidad por defecto del servicio ---
-            const service = services.find(s => s.id == id);
-            if (service) {
-                serviceQuantityInput.value = service.quantity || 1;
-            }
-            // --- FIN DE CORRECCIÓN ---
-
-            updatePriceDisplay();
+             const id = findIdFromDatalistInput(workerInput, workerOptions);
+             if (id) {
+                 const worker = workers.find(w => w.id === id);
+                 if (worker && worker.familiar) {
+                     patientNameInput.value = worker.familiar; // Autocompletar familiar
+                 }
+                 workerSelectId.value = worker.id;
+             } else {
+                 patientNameInput.value = ''; // Limpiar si no se selecciona
+                 workerSelectId.value = '';
+             }
         });
         
-        // Evento del botón de Descargar PDF (ACTUALIZADO con correlativo)
+        serviceInput.addEventListener('input', () => {
+             const id = findIdFromDatalistInput(serviceInput, serviceOptions);
+             if (id) {
+                 const service = services.find(s => s.id === id);
+                 servicePriceDisplay.textContent = `$${formatCurrency(service.price, 'USD')}`;
+                 serviceSelectId.value = service.id;
+             } else {
+                 servicePriceDisplay.textContent = '$0.00';
+                 serviceSelectId.value = '';
+             }
+        });
+        
+        workerCiInput.addEventListener('input', (e) => {
+            e.target.value = formatCI(e.target.value);
+        });
+        
+        receiptNumberInput.addEventListener('input', () => {
+            const num = receiptNumberInput.value.trim();
+            if (num) {
+                previewReceiptNumberWrapper.style.display = 'block';
+                previewReceiptNumber.textContent = num;
+            } else {
+                previewReceiptNumberWrapper.style.display = 'none';
+                previewReceiptNumber.textContent = 'N/A';
+            }
+        });
+        
+        // ==================================================================
+        // ===== LÓGICA DE DESCARGA PDF CON JSPD (CORREGIDA) =====
+        // ==================================================================
+        
         downloadPdfButton.addEventListener('click', () => {
             const originalButtonHtml = downloadPdfButton.innerHTML;
             
@@ -1361,84 +1213,261 @@
             `;
             
             try {
-                const { jsPDF } = window.jspdf;
-                const receiptElement = document.getElementById('receipt-preview');
-
-                const deleteButtons = receiptElement.querySelectorAll('.delete-receipt-item-btn');
-                deleteButtons.forEach(btn => btn.style.visibility = 'hidden');
-
-                html2canvas(receiptElement, {
-                    scale: 2, // Mejor calidad
-                    useCORS: true,
-                    windowWidth: receiptElement.scrollWidth,
-                    windowHeight: receiptElement.scrollHeight
-                }).then(canvas => {
-                    const imgData = canvas.toDataURL('image/png');
-                    
-                    // --- INICIO DE LA CORRECCIÓN: Añadir Márgenes ---
-                    const margin = 10; // 10mm de margen
-                    const pdfWidth = 210 - (margin * 2); // Ancho A4 (210mm) - márgenes
-                    const usablePageHeight = 297 - (margin * 2); // Alto A4 (297mm) - márgenes
-                    // --- FIN DE LA CORRECCIÓN ---
-                    
-                    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-                    let heightLeft = imgHeight;
-                    
-                    const doc = new jsPDF('p', 'mm', 'a4'); // 'p' = portrait (vertical)
-                    
-                    let position = margin; // Posición Y inicial con margen superior
-
-                    // Añadir imagen con márgenes
-                    doc.addImage(imgData, 'PNG', margin, position, pdfWidth, imgHeight);
-                    heightLeft -= usablePageHeight; // Reducir la altura usable de la página
-
-                    while (heightLeft >= 0) {
-                        position = heightLeft - imgHeight + margin; // Calcular nueva posición Y con margen
-                        doc.addPage();
-                        doc.addImage(imgData, 'PNG', margin, position, pdfWidth, imgHeight); // Añadir imagen con márgenes
-                        heightLeft -= usablePageHeight; // Reducir la altura usable
-                    }
-                    
-                    const receiptNumber = document.getElementById('preview-receipt-number').textContent.trim() || 'N-A';
-                    const receiptDate = document.getElementById('preview-date').textContent.trim() || 'fecha';
-                    const fileName = `Recibo-${receiptNumber}_${receiptDate}.pdf`;
-                    
-                    doc.save(fileName);
-                    
-                    // --- INICIO: LÓGICA DE INCREMENTO DE CORRELATIVO ---
-                    const selectedEmitterId = parseInt(emitterSelectId.value);
-                    const selectedEmitter = emitters.find(e => e.id === selectedEmitterId);
-                    
-                    if (selectedEmitter && selectedEmitter.useCorrelative) {
-                        const numberUsed = parseInt(receiptNumberInput.value);
-                        nextReceiptNumber = numberUsed + 1;
-                        localStorage.setItem('receiptCorrelative', JSON.stringify(nextReceiptNumber));
-                        
-                        // Actualizar el input para el *siguiente* recibo
-                        receiptNumberInput.value = String(nextReceiptNumber).padStart(3, '0');
-                        receiptNumberInput.dispatchEvent(new Event('input'));
-                    }
-                    // --- FIN: LÓGICA DE INCREMENTO DE CORRELATIVO ---
-
-                    
-                    downloadPdfButton.disabled = false;
-                    downloadPdfButton.innerHTML = originalButtonHtml;
-                    deleteButtons.forEach(btn => btn.style.visibility = 'visible');
-
-                }).catch(err => {
-                    console.error("Error al generar PDF con html2canvas: ", err);
-                    downloadPdfButton.disabled = false;
-                    downloadPdfButton.innerHTML = originalButtonHtml;
-                    deleteButtons.forEach(btn => btn.style.visibility = 'visible');
-                });
+                // 1. Inicialización de jsPDF
+                const doc = new window.jspdf.jsPDF('p', 'mm', 'a4'); // p = portrait, mm = milímetros, a4 = tamaño de página
                 
+                // Definir márgenes y posiciones
+                const margin = 15;
+                let yPos = margin;
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const usableWidth = pageWidth - (margin * 2);
+
+                // --- 2. Encabezado (Emisor e Info de Recibo) ---
+                
+                // Obtener datos del DOM
+                const emitterName = previewEmitterName.textContent.trim();
+                const emitterDesc = previewEmitterDesc.textContent.trim();
+                const date = previewDate.textContent.trim();
+                const receiptNumber = previewReceiptNumberWrapper.style.display !== 'none' 
+                                      ? previewReceiptNumber.textContent.trim() 
+                                      : null;
+
+                // Forzar estilos de Emisor
+                doc.setFont('Helvetica', 'bold');
+                doc.setFontSize(16);
+                doc.setTextColor(76, 29, 149); // purple-900
+                doc.text(emitterName, margin, yPos);
+                
+                doc.setFont('Helvetica', 'normal'); // Resetear a normal para fecha
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0); // Resetear a negro para la fecha
+                doc.text(`Fecha: ${date}`, pageWidth - margin, yPos, { align: 'right' });
+                yPos += 5; // Moverse hacia abajo
+                
+                doc.setFont('Helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(107, 33, 168); // purple-700
+                doc.text(emitterDesc, margin, yPos);
+                
+                doc.setTextColor(0, 0, 0); // Resetear a negro para N° Recibo
+                if (receiptNumber) {
+                    doc.text(`Recibo N°: ${receiptNumber}`, pageWidth - margin, yPos, { align: 'right' });
+                }
+                
+                yPos += 10;
+                doc.setDrawColor(229, 231, 235); // gray-200
+                doc.line(margin, yPos, pageWidth - margin, yPos); // Línea separadora
+                yPos += 10;
+
+                // --- 3. Información del Receptor ---
+                const recipientName = previewRecipientName.textContent.trim();
+                const rif = previewRecipientRif.textContent.trim();
+                const address = previewRecipientAddress.textContent.trim();
+                const phone = previewRecipientPhone.textContent.trim();
+
+                doc.setFont('Helvetica', 'bold'); // Receptor Nombre en Negrita
+                doc.setFontSize(11);
+                doc.text(recipientName, margin, yPos);
+                yPos += 5;
+                
+                doc.setFont('Helvetica', 'normal'); // Resetear a normal
+                doc.setFontSize(10);
+                if (rif) doc.text(rif, margin, yPos);
+                yPos += 5;
+                
+                // Usar splitTextToSize para manejar direcciones largas
+                const addressLines = doc.splitTextToSize(address, usableWidth * 0.75); // Limitar a 3/4 de página
+                doc.text(addressLines, margin, yPos);
+                yPos += (addressLines.length * 4) + 2; // Ajustar yPos basado en líneas de dirección
+                
+                if (phone) doc.text(phone, margin, yPos);
+                yPos += 15; // Espacio antes de la tabla
+
+                // --- 4. Título de la Tabla ---
+                doc.setFont('Helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.setTextColor(67, 56, 202); // purple-800
+                doc.text("Servicios Médicos", margin, yPos);
+                yPos += 8;
+
+                // --- 5. Tabla de Items (jsPDF-AutoTable) ---
+                
+                // Encabezados de la tabla
+                const tableHead = [
+                    ['N°', 'Fecha', 'Nombres/C.I/Paciente', 'Servicio', 'Cant.', 'P/U ($)', 'Total ($)', 'Total (Bs.)']
+                ];
+
+                // Cuerpo de la tabla (mapeando 'receiptItems')
+                // (receiptItems ya está ordenado por fecha gracias a renderReceiptPreview)
+                const tableBody = receiptItems.map((item, index) => {
+                    const formattedDate = formatDateDDMMYY(item.serviceDate);
+                    // AutoTable maneja saltos de línea (\n)
+                    const patientInfo = `${item.workerName}\n${item.workerCi}${item.patientName ? `\nPaciente: ${item.patientName}` : ''}`;
+                    const unitPrice = formatCurrency(item.price, 'PDF_USD'); // Formato numérico
+                    const totalUSD = formatCurrency(item.quantity * item.price, 'PDF_USD'); // Formato numérico
+                    const totalBS = formatCurrency((item.quantity * item.price) * bcvRate, 'VES');
+                    
+                    return [
+                        index + 1,
+                        formattedDate,
+                        patientInfo,
+                        item.description,
+                        item.quantity,
+                        unitPrice,
+                        totalUSD,
+                        totalBS
+                    ];
+                });
+
+                doc.autoTable({
+                    startY: yPos,
+                    head: tableHead,
+                    body: tableBody,
+                    theme: 'plain', // 'striped', 'grid', 'plain'
+                    headStyles: {
+                        fillColor: [245, 243, 255], // purple-50
+                        textColor: [88, 28, 135], // purple-900
+                        fontStyle: 'bold',
+                        lineColor: [221, 214, 254], // purple-200
+                        lineWidth: 0.1
+                    },
+                    styles: {
+                        font: 'Helvetica',
+                        fontSize: 8,
+                        cellPadding: 2.5,
+                        valign: 'middle',
+                        lineWidth: 0.1,
+                        lineColor: [229, 231, 235] // gray-200
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 8, halign: 'center' }, // N°
+                        1: { cellWidth: 20 }, // Fecha (Ajustado de 18)
+                        2: { cellWidth: 'auto' }, // Nombres
+                        3: { cellWidth: 28 }, // Servicio (Ajustado de 30)
+                        4: { cellWidth: 10, halign: 'center' }, // Cant.
+                        5: { cellWidth: 20, halign: 'right' }, // P/U
+                        6: { cellWidth: 20, halign: 'right' }, // Total $
+                        7: { cellWidth: 25, halign: 'right' }  // Total Bs.
+                    },
+                    willDrawCell: (data) => {
+                        if (data.section === 'body') {
+                            // Columnas 0 (N°), 2 (Nombres), 6 (Total $)
+                            // CORRECCIÓN: Usar data.cell.styles.fontStyle en lugar de doc.setFont
+                            // para asegurar que el estilo se aplique a celdas con múltiples líneas.
+                            if (data.column.index === 0 || data.column.index === 2 || data.column.index === 6) {
+                                data.cell.styles.fontStyle = 'bold';
+                            } else {
+                                data.cell.styles.fontStyle = 'normal';
+                            }
+                        }
+                    },
+                    didDrawPage: (data) => {
+                        // Actualizar yPos para el contenido después de la tabla (en caso de salto de página)
+                        yPos = data.cursor.y;
+                    }
+                });
+ 
+                // --- 6. Totales (con recuadro) ---
+                yPos += 8; // Espacio después de la tabla
+
+                // Obtener datos de los totales
+                const subtotal = subtotalUsd.textContent;
+                const bcv = previewBcvRate.textContent;
+                const total = totalBs.textContent;
+                
+                // Definir dimensiones del recuadro
+                const rectX = pageWidth / 2 - 10; // Empezar un poco a la izq. del centro
+                const rectY = yPos;
+                const rectWidth = (pageWidth - margin) - rectX; // Hasta el margen derecho
+                const rectHeight = 26; // Alto fijo para 3 líneas + padding + línea
+                const borderRadius = 3; // Bordes redondeados
+                
+                // Dibujar el recuadro
+                doc.setFillColor(245, 243, 255); // purple-50
+                doc.roundedRect(rectX, rectY, rectWidth, rectHeight, borderRadius, borderRadius, 'F'); // 'F' = Fill (Rellenar)
+
+                // Posiciones del texto dentro del recuadro
+                let textY = rectY + 7; // Padding superior
+                const labelX = rectX + 5; // Padding izquierdo para etiquetas
+                const valueX = rectX + rectWidth - 5; // Padding derecho para valores
+
+                // Dibujar Subtotal
+                doc.setFont('Helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0); // Negro
+                doc.text('Subtotal ($)', labelX, textY);
+                doc.setFont('Helvetica', 'normal');
+                doc.text(subtotal, valueX, textY, { align: 'right' });
+                textY += 6;
+
+                // Dibujar Tasa BCV
+                doc.setFont('Helvetica', 'bold');
+                doc.setTextColor(107, 33, 168); // purple-700
+                doc.text('Tasa BCV', labelX, textY);
+                doc.setFont('Helvetica', 'normal');
+                doc.text(`Bs. ${bcv}`, valueX, textY, { align: 'right' });
+                textY += 5; // Espacio antes de la línea
+
+                // Dibujar línea separadora
+                doc.setDrawColor(221, 214, 254); // purple-200
+                doc.setLineWidth(0.5);
+                doc.line(rectX + 2, textY, rectX + rectWidth - 2, textY);
+                textY += 6; // Espacio después de la línea
+
+                // Dibujar TOTAL
+                doc.setFont('Helvetica', 'bold');
+                doc.setFontSize(11); // Un poco más grande
+                doc.setTextColor(67, 56, 202); // purple-800
+                doc.text('TOTAL (Bs.)', labelX, textY);
+                doc.text(total, valueX, textY, { align: 'right' });
+
+                // --- 7. Pie de Página ---
+                yPos = doc.internal.pageSize.getHeight() - 15; // Posición fija en la parte inferior
+                doc.setFont('Helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(156, 163, 175); // gray-400
+                doc.text('Gracias por su confianza.', pageWidth / 2, yPos, { align: 'center' });
+                yPos += 4;
+                doc.text('Este es un recibo informativo, no es una factura fiscal.', pageWidth / 2, yPos, { align: 'center' });
+
+                // --- 8. Guardar el PDF ---
+                const receiptNumberForFile = receiptNumber || 'S-N';
+                const receiptDateForFile = date.replace(/\//g, '-');
+                const fileName = `Recibo-${receiptNumberForFile}_${receiptDateForFile}.pdf`;
+                
+                doc.save(fileName);
+                
+                // --- 9. Lógica de Correlativo ---
+                const selectedEmitterId = parseInt(emitterSelectId.value);
+                const selectedEmitter = emitters.find(e => e.id === selectedEmitterId);
+                
+                if (selectedEmitter && selectedEmitter.useCorrelative) {
+                    const numberUsed = parseInt(receiptNumberInput.value);
+                    nextReceiptNumber = numberUsed + 1;
+                    localStorage.setItem('receiptCorrelative', JSON.stringify(nextReceiptNumber));
+                    
+                    // Actualizar el input para el *siguiente* recibo
+                    receiptNumberInput.value = String(nextReceiptNumber).padStart(3, '0');
+                    receiptNumberInput.dispatchEvent(new Event('input'));
+                }
+
+                // --- 10. Resetear el botón ---
+                downloadPdfButton.disabled = false;
+                downloadPdfButton.innerHTML = originalButtonHtml;
+
             } catch (error) {
-                console.error("Error al inicializar librerías PDF: ", error);
+                console.error("Error al generar PDF con jsPDF: ", error);
+                // Resetear el botón en caso de error
                 downloadPdfButton.disabled = false;
                 downloadPdfButton.innerHTML = originalButtonHtml;
             }
         });
-        
+
+        // ==================================================================
+        // ===== FIN DE LA LÓGICA DE DESCARGA PDF ===========================
+        // ==================================================================
+
+
         // Eventos del botón de Limpiar
         resetButton.addEventListener('click', () => {
             resetModal.classList.remove('hidden');
