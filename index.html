@@ -752,7 +752,8 @@
             serviceOptions.innerHTML = '';
             services.forEach(s => {
                 const option = document.createElement('option');
-                option.value = `${s.description} ($${formatCurrency(s.price, 'USD')})`;
+                // MODIFICADO: Se elimina el precio del 'value'
+                option.value = s.description;
                 option.dataset.id = s.id;
                 serviceOptions.appendChild(option);
             });
@@ -966,11 +967,13 @@
             if (id) { // Editando
                 const index = services.findIndex(s => s.id === id);
                 if (index !== -1) {
-                    services[index] = { id, description, price };
+                    // MODIFICADO: Guardar también la cantidad por defecto
+                    services[index] = { id, description, price, defaultQuantity: quantity };
                 }
             } else { // Creando
                 const newId = services.length > 0 ? Math.max(...services.map(s => s.id)) + 1 : 1;
-                services.push({ id: newId, description, price });
+                // MODIFICADO: Guardar también la cantidad por defecto
+                services.push({ id: newId, description, price, defaultQuantity: quantity });
             }
             
             saveToLocalStorage('medicalReceiptServices', services);
@@ -1062,9 +1065,12 @@
                 const service = services.find(s => s.id === id);
                 if (service) {
                     serviceEditId.value = service.id;
+                    // MODIFICADO: Cargar la cantidad por defecto y calcular el precio total
+                    const defaultQty = service.defaultQuantity || 1;
                     serviceDescInput.value = service.description;
-                    servicePriceInput.value = service.price.toFixed(2);
-                    serviceQuantityModalInput.value = '1';
+                    // Calcular total price = P/U * defaultQty
+                    servicePriceInput.value = (service.price * defaultQty).toFixed(2);
+                    serviceQuantityModalInput.value = defaultQty;
                     serviceSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
                 }
             }
@@ -1212,9 +1218,13 @@
                  const service = services.find(s => s.id === id);
                  servicePriceDisplay.textContent = `$${formatCurrency(service.price, 'USD')}`;
                  serviceSelectId.value = service.id;
+                 // NUEVO: Asignar cantidad por defecto del servicio
+                 serviceQuantityInput.value = service.defaultQuantity || 1;
              } else {
                  servicePriceDisplay.textContent = '$0.00';
                  serviceSelectId.value = '';
+                 // NUEVO: Resetear cantidad a 1
+                 serviceQuantityInput.value = 1;
              }
         });
         
@@ -1523,3 +1533,4 @@
     </script>
 </body>
 </html>
+
