@@ -593,11 +593,7 @@
 
         // --- FUNCIONES DE UTILIDAD ---
         
-        // Función para formato Nombre Propio (AHORA SOLO SE USA PARA PACIENTES)
-        const toProperCase = (str) => {
-            if (!str) return '';
-            return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
-        };
+        // (Función toProperCase eliminada para corregir error con acentos)
         
         // Función para formato RIF
         const formatRIF = (rif) => {
@@ -934,10 +930,10 @@
         workerForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = parseInt(workerEditId.value);
-            // (Se mantiene toProperCase para pacientes, según lo solicitado)
-            const name = toProperCase(workerNameInput.value.trim());
+            // (Se eliminó toProperCase para corregir error con acentos)
+            const name = workerNameInput.value.trim();
             const ci = workerCiInput.value.trim();
-            const familiar = toProperCase(workerFamiliarInput.value.trim());
+            const familiar = workerFamiliarInput.value.trim();
 
             if (id) { // Editando
                 const index = workers.findIndex(w => w.id === id);
@@ -1106,8 +1102,8 @@
                 return;
             }
             
-            // (Se mantiene toProperCase para pacientes)
-            const patientName = toProperCase(patientNameInput.value.trim() || worker.familiar);
+            // (Se eliminó toProperCase para corregir error con acentos)
+            const patientName = (patientNameInput.value.trim() || worker.familiar);
 
             receiptItems.push({
                 id: Date.now(), // ID simple para el item del recibo
@@ -1539,5 +1535,3 @@
     </script>
 </body>
 </html>
-
-
