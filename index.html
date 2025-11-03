@@ -595,40 +595,61 @@
         
         // (Función toProperCase eliminada para corregir error con acentos)
         
-        // Función para formato RIF (Modificada)
+        // Función para formato RIF (Modificada para el evento 'input')
         const formatRIF = (value) => {
             if (!value) return '';
-            
-            // 1. Limpiar (permitir letras, números y el guion)
+            // Permitir letras, números y guiones
             let val = value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
-            
-            // 2. Extraer la letra inicial
             let prefixMatch = val.match(/^[A-Z]/);
-            let prefix = 'V'; // Default
             
             if (prefixMatch) {
-                prefix = prefixMatch[0];
-                val = val.substring(1); // Quitar la letra del resto
+                // El usuario escribió una letra primero (J, V, E...)
+                let prefix = prefixMatch[0];
+                let numbers = val.substring(1).replace(/[^0-9]/g, ''); // Obtener solo números después
+                numbers = numbers.substring(0, 9);
+                
+                if (numbers.length === 0) {
+                    return `${prefix}-`;
+                }
+                if (numbers.length > 8) {
+                    return `${prefix}-${numbers.substring(0, 8)}-${numbers.substring(8)}`;
+                }
+                return `${prefix}-${numbers}`;
+            } else {
+                // El usuario empezó con números, no auto-prefijar V-
+                let numbers = val.replace(/[^0-9]/g, ''); // Obtener solo números
+                numbers = numbers.substring(0, 9); // Max 9 dígitos
+                return numbers;
             }
-            
-            // 3. Limpiar el resto (solo números)
-            let numbers = val.replace(/[^0-9]/g, '');
-            
-            // 4. Limitar longitud de números (8 principales + 1 verificador)
-            numbers = numbers.substring(0, 9); 
+        };
 
-            // 5. Reconstruir
-            if (numbers.length === 0) {
-                return `${prefix}-`; // Ej: J-
-            }
+        // NUEVA: Función para formatear el RIF al guardar (submit)
+        const finalizeRIF = (rif) => {
+            if (!rif || rif.trim() === '') return '';
+            let val = rif.trim().toUpperCase();
             
-            if (numbers.length > 8) {
-                 // Si tiene 9 dígitos, añadir guion final (V-12345678-9)
-                 return `${prefix}-${numbers.substring(0, 8)}-${numbers.substring(8)}`;
+            // Revisar si empieza con una letra
+            if (/^[A-Z]/.test(val)) {
+                // Ya tiene prefijo, solo limpiar y formatear
+                let prefix = val.charAt(0);
+                let numbers = val.substring(1).replace(/[^0-9]/g, '');
+                numbers = numbers.substring(0, 9);
+                if (numbers.length > 8) {
+                    return `${prefix}-${numbers.substring(0, 8)}-${numbers.substring(8)}`;
+                }
+                return `${prefix}-${numbers}`;
+            } else {
+                // No tiene prefijo (empieza con número), añadir 'V-'
+                let numbers = val.replace(/[^0-9]/g, '');
+                numbers = numbers.substring(0, 9);
+                if (numbers.length > 8) {
+                    return `V-${numbers.substring(0, 8)}-${numbers.substring(8)}`;
+                }
+                if (numbers.length > 0) {
+                    return `V-${numbers}`;
+                }
+                return ''; // Si solo eran espacios o nada
             }
-            
-            // Ej: V-123...
-            return `${prefix}-${numbers}`;
         };
 
         const formatCurrency = (value, type = 'VES') => {
@@ -899,7 +920,7 @@
             const id = parseInt(emitterEditId.value);
             // ===== CAMBIO AQUÍ: Se eliminó toProperCase =====
             const name = emitterNameInput.value.trim();
-            const rif = emitterRifInput.value.trim();
+            const rif = finalizeRIF(emitterRifInput.value); // MODIFICADO: Usar finalizeRIF
             const desc = emitterDescInput.value.trim();
             const useCorrelative = emitterCorrelativeInput.checked;
 
@@ -925,7 +946,7 @@
             const id = parseInt(recipientEditId.value);
             // ===== CAMBIO AQUÍ: Se eliminó toProperCase =====
             const name = recipientNameInput.value.trim();
-            const rif = recipientRifInput.value.trim();
+            const rif = finalizeRIF(recipientRifInput.value); // MODIFICADO: Usar finalizeRIF
             const address = recipientAddressInput.value.trim();
             const phone = recipientPhoneInput.value.trim();
 
@@ -1554,4 +1575,5 @@
     </script>
 </body>
 </html>
+
 
