@@ -595,21 +595,40 @@
         
         // (Función toProperCase eliminada para corregir error con acentos)
         
-        // Función para formato RIF
-        const formatRIF = (rif) => {
-            if (!rif) return '';
-            let value = rif.toUpperCase().replace(/[^VEJPG0-9]/g, ''); // Permitir V, E, J, P, G y números
-            let prefix = value.charAt(0);
+        // Función para formato RIF (Modificada)
+        const formatRIF = (value) => {
+            if (!value) return '';
             
-            if (!isNaN(prefix) || !['V', 'E', 'J', 'P', 'G'].includes(prefix)) {
-                prefix = 'J'; // Default a J si es inválido o número
-                value = 'J' + value.replace(/[^0-9]/g, ''); // Limpiar no números
-            } else {
-                value = value.substring(1); // Quitar prefijo para limpiar números
+            // 1. Limpiar (permitir letras, números y el guion)
+            let val = value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+            
+            // 2. Extraer la letra inicial
+            let prefixMatch = val.match(/^[A-Z]/);
+            let prefix = 'V'; // Default
+            
+            if (prefixMatch) {
+                prefix = prefixMatch[0];
+                val = val.substring(1); // Quitar la letra del resto
             }
             
-            value = value.replace(/[^0-9]/g, ''); // Limpiar solo números
-            return `${prefix}-${value}`.substring(0, 12); // Limitar longitud J-12345678-9
+            // 3. Limpiar el resto (solo números)
+            let numbers = val.replace(/[^0-9]/g, '');
+            
+            // 4. Limitar longitud de números (8 principales + 1 verificador)
+            numbers = numbers.substring(0, 9); 
+
+            // 5. Reconstruir
+            if (numbers.length === 0) {
+                return `${prefix}-`; // Ej: J-
+            }
+            
+            if (numbers.length > 8) {
+                 // Si tiene 9 dígitos, añadir guion final (V-12345678-9)
+                 return `${prefix}-${numbers.substring(0, 8)}-${numbers.substring(8)}`;
+            }
+            
+            // Ej: V-123...
+            return `${prefix}-${numbers}`;
         };
 
         const formatCurrency = (value, type = 'VES') => {
@@ -1535,3 +1554,4 @@
     </script>
 </body>
 </html>
+
