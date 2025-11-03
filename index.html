@@ -11,7 +11,6 @@
     <!-- jsPDF (Librería base) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- jsPDF-AutoTable (Para tablas nativas en PDF) -->
-    <!-- CAMBIO: Se usa una versión diferente (3.5.23) que es más estable con esta configuración de scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -26,14 +25,6 @@
              background-color: #f9fafb;
         }
         
-        /* --- BLOQUE DE CÓDIGO ELIMINADO ---
-           Se eliminó el bloque de estilos de fuente en 'pt' 
-           que estaba causando conflictos con html2canvas.
-           Ahora, la captura del PDF usará los estilos de Tailwind 
-           de la vista previa, que son correctos.
-        */
-
-
         @media print {
             body * {
                 visibility: hidden;
@@ -52,7 +43,7 @@
             }
         }
         
-        /* Botones de lista con iconos */
+        /* Botones de lista (Modales) */
         .list-btn {
             border-radius: 50%;
             width: 28px;
@@ -84,17 +75,28 @@
             color: white;
         }
         
-        /* --- ELIMINADO ---
-         Ocultar flechas en input number 
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-          -webkit-appearance: none; 
-          margin: 0; 
+        /* NUEVO: Botón para eliminar item de la tabla del recibo */
+        .delete-item-btn {
+            background: #fef2f2; /* red-50 */
+            color: #ef4444; /* red-500 */
+            border: 1px solid #fecaca; /* red-200 */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            line-height: 1;
+            transition: all 0.2s;
+            cursor: pointer;
         }
-        input[type=number] {
-          -moz-appearance: textfield;
+        .delete-item-btn:hover {
+            background: #ef4444; /* red-500 */
+            color: white;
         }
-        */
+        
 
         /* --- INICIO DE CORRECCIÓN DE PDF --- */
         /* Reducir padding y tamaños de fuente para que el PDF se genere más compacto */
@@ -157,11 +159,8 @@
     <div class="container mx-auto p-4 lg:p-8">
         <header class="text-center mb-8 no-print">
             <h1 class="text-4xl font-bold text-fuchsia-600">Generador de Recibos</h1>
-            <!-- PÁRRAFO ELIMINADO -->
-            <!-- <p class="text-purple-700 mt-2">Completa los campos para crear una pre-factura detallada.</p> -->
         </header>
 
-        <!-- CORRECCIÓN: Ajuste de la rejilla para que los anchos sean iguales (50/50) -->
         <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <!-- Columna de Controles (ahora 1/2 parte) -->
             <div class="bg-white p-6 rounded-2xl shadow-lg no-print space-y-8 lg:col-span-1">
@@ -193,7 +192,6 @@
                         </div>
                         <div>
                             <label for="receipt-number-input" class="block text-sm font-medium text-gray-900 mb-1">N° Recibo (Opcional)</label>
-                            <!-- AÑADIDO: disabled:bg-gray-100 para correlativo -->
                             <input type="text" id="receipt-number-input" placeholder="Ej: 002" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition text-gray-800 disabled:bg-gray-100">
                         </div>
                     </div>
@@ -205,7 +203,6 @@
                     <form id="add-item-form" class="space-y-4">
                         <!-- CAMPO TRABAJADOR (DATALIST) -->
                         <div>
-                            <!-- CAMBIO DE TEXTO: Trabajador -> Nombres -->
                             <label for="worker-input" class="block text-sm font-medium text-gray-900 mb-1">Nombres</label>
                             <input list="worker-options" id="worker-input" placeholder="Escriba para buscar o seleccionar..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 text-gray-800" required>
                             <datalist id="worker-options"></datalist>
@@ -215,7 +212,6 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label for="patient-name" class="block text-sm font-medium text-gray-900 mb-1">Nombre del Paciente (Familiar)</label>
-                                <!-- NOTE: Este campo se llena automáticamente si el trabajador tiene familiar asociado -->
                                 <input type="text" id="patient-name" placeholder="(Opcional, se usa el familiar por defecto)" class="w-full p-2 border border-gray-300 rounded-md text-gray-800">
                             </div>
                             <!-- CAMPO NUEVO: Fecha del Servicio -->
@@ -259,7 +255,6 @@
                         <button id="manage-recipients-btn" class="w-full bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-3 px-4 rounded-md flex items-center justify-center">
                             <i class="fas fa-building mr-2"></i> Gestionar Entes
                         </button>
-                        <!-- CAMBIO DE TEXTO: Gestionar Trabajadores -> Gestionar Pacientes -->
                         <button id="manage-workers-btn" class="w-full bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-3 px-4 rounded-md flex items-center justify-center">
                             <i class="fas fa-users mr-2"></i> Gestionar Pacientes
                         </button>
@@ -273,23 +268,21 @@
 
             <!-- Columna de Vista Previa (ahora 1/2 parte) -->
             <div class="lg:col-span-1">
-                <!-- AJUSTE DE TAMAÑOS DE FUENTE EN EL RECIBO (Anulados por CSS en <style>) -->
                 <div id="receipt-preview" class="bg-white p-8 rounded-2xl shadow-lg min-h-full text-gray-800">
                     <header class="flex justify-between items-start pb-4 border-b-2 border-gray-200">
                         <div>
                             <h2 id="preview-emitter-name" class="text-lg font-bold text-purple-900">Nombre del Emisor</h2>
+                            <p id="preview-emitter-rif" class="text-purple-700 text-sm"></p>
                             <p id="preview-emitter-desc" class="text-purple-700 text-sm">Descripción</p>
                         </div>
                         <div class="text-right text-sm text-gray-500">
                             <p class="font-semibold">Fecha: <span id="preview-date">--/--/----</span></p>
-                            <!-- CAMPO DE N° RECIBO CONDICIONAL -->
                             <p id="preview-receipt-number-wrapper" style="display: none;">Recibo N°: <span id="preview-receipt-number">N/A</span></p>
                         </div>
                     </header>
                     
                     <section id="preview-recipient-info" class="my-6 text-sm">
                         <div>
-                            <!-- <h3 class="font-semibold text-purple-700 uppercase tracking-wider mb-2">PARA:</h3> --> <!-- ELIMINADO -->
                             <p id="preview-recipient-name" class="font-semibold text-base">Seleccione un ente receptor</p>
                             <p id="preview-recipient-rif" class="text-gray-600"></p>
                             <p id="preview-recipient-address" class="text-gray-600"></p>
@@ -297,7 +290,6 @@
                         </div>
                     </section>
 
-                    <!-- TÍTULO AÑADIDO (COMO PDF) -->
                     <h3 class="text-xl font-bold text-purple-800 mt-6 mb-4">Servicios Médicos</h3>
 
                     <!-- SECCIÓN DE ITEMS REESTRUCTURADA (AHORA ES UNA SOLA TABLA) -->
@@ -308,7 +300,6 @@
 
                     <section class="mt-8 flex justify-end">
                         <div class="w-full md:w-1/2 lg:w-2/3">
-                            <!-- AJUSTE DE TAMAÑOS DE FUENTE EN TOTALES (Anulados por CSS en <style>) -->
                             <div class="bg-purple-50 p-4 rounded-lg space-y-2">
                                 <div class="flex justify-between text-base font-semibold">
                                     <span>Subtotal ($)</span>
@@ -333,11 +324,9 @@
                     </footer>
                 </div>
                  <div class="text-center mt-6 no-print">
-                    <!-- BOTÓN DESCARGAR PDF (MODIFICADO) -->
                     <button id="download-pdf-button" class="bg-green-200 text-green-900 font-bold py-3 px-8 rounded-full hover:bg-green-300 transition duration-300 flex items-center justify-center mx-auto mb-2 w-full md:w-auto md:inline-flex shadow-lg shadow-green-200/50">
                         <i class="fas fa-file-pdf mr-2"></i> Descargar PDF
                     </button>
-                    <!-- BOTÓN LIMPIAR (ACTUALIZADO AL ESTILO DE LA IMAGEN) -->
                     <button id="reset-button" class="bg-yellow-200 text-yellow-900 font-bold py-3 px-8 rounded-full hover:bg-yellow-300 transition duration-300 md:ml-2 flex items-center justify-center mx-auto w-full md:w-auto md:inline-flex shadow-lg shadow-yellow-200/50">
                         <i class="fas fa-arrow-left mr-2"></i> Limpiar Formulario
                     </button>
@@ -372,12 +361,12 @@
                 <button id="close-emitters-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
             <!-- Form -->
-            <form id="emitter-form" class="space-y-4 mb-4"> <!-- Aumentado space-y -->
+            <form id="emitter-form" class="space-y-4 mb-4">
                 <input type="hidden" id="emitter-edit-id">
                 <input type="text" id="emitter-name-input" placeholder="Nombre del Emisor (Ej: Dra. ...)" class="w-full p-2 border rounded-md text-gray-800" required>
+                <input type="text" id="emitter-rif-input" placeholder="RIF (Ej: J-123...)" class="w-full p-2 border rounded-md text-gray-800">
                 <input type="text" id="emitter-desc-input" placeholder="Descripción (Ej: Ginecólogo)" class="w-full p-2 border rounded-md text-gray-800" required>
                 
-                <!-- CHECKBOX CORRELATIVO AÑADIDO -->
                 <div class="flex items-center">
                     <input type="checkbox" id="emitter-correlative-input" class="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
                     <label for="emitter-correlative-input" class="ml-2 block text-sm text-gray-900">Usar correlativo de recibo</label>
@@ -420,11 +409,8 @@
     </div>
     
     <!-- Workers Modal -->
-    <!-- ***** CORRECCIÓN AQUÍ ***** -->
     <div id="workers-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center no-print hidden z-50 p-4">
-        <!-- DIV CONTENEDOR DEL MODAL (AÑADIDO) -->
         <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl text-gray-800">
-            <!-- CAMBIO DE TEXTO: Gestionar Trabajadores -> Gestionar Pacientes -->
             <div class="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 class="text-2xl font-bold text-purple-800">Gestionar Pacientes</h3>
                 <button id="close-workers-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
@@ -433,10 +419,8 @@
             <form id="worker-form" class="space-y-2 mb-4">
                 <input type="hidden" id="worker-edit-id">
                 <input type="text" id="worker-name-input" placeholder="Nombre Apellido" class="w-full p-2 border rounded-md text-gray-800" required>
-                <!-- CAMPO CI: Se aplica formato automático en JS -->
                 <input type="text" id="worker-ci-input" placeholder="Ej: V-12345678" class="w-full p-2 border rounded-md text-gray-800" required>
                 <input type="text" id="worker-familiar-input" placeholder="Paciente Familiar (Opcional)" class="w-full p-2 border rounded-md text-gray-800">
-                <!-- CAMBIO DE TEXTO: Añadir Trabajador -> Añadir Paciente -->
                 <button type="submit" id="worker-submit-btn" class="w-full bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-2 px-4 rounded-md flex items-center justify-center">
                     <i class="fas fa-plus mr-2"></i> Añadir Paciente
                 </button>
@@ -445,9 +429,8 @@
             <ul id="workers-list" class="space-y-2 max-h-64 overflow-y-auto pr-2 text-gray-800">
                 <!-- Trabajadores se renderizan aquí -->
             </ul>
-        </div> <!-- CIERRE DEL DIV CONTENEDOR (AÑADIDO) -->
+        </div>
     </div>
-    <!-- ***** FIN DE LA CORRECCIÓN ***** -->
 
     <!-- Services Modal -->
     <div id="services-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center no-print hidden z-50 p-4">
@@ -457,7 +440,6 @@
                 <button id="close-services-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
             <!-- Form -->
-            <!-- REESTRUCTURADO: Formulario de Servicios con Cantidad -->
             <form id="service-form" class="space-y-3 mb-4">
                  <input type="hidden" id="service-edit-id">
                 <div>
@@ -498,19 +480,10 @@
         let nextReceiptNumber = JSON.parse(localStorage.getItem('receiptCorrelative')) || 1;
 
         // Cargar desde localStorage
-        let emitters = JSON.parse(localStorage.getItem('medicalReceiptEmitters')) || [
-            // { id: 1, name: "Dra. María Pérez", desc: "Ginecólogo Obstetra", useCorrelative: true }
-        ];
-        let recipients = JSON.parse(localStorage.getItem('medicalReceiptRecipients')) || [
-            // { id: 1, name: "Seguros Horizonte S.A.", rif: "J-12345678-9", address: "Av. Principal, Torre Seguros", phone: "0212-555-1234" }
-        ];
-        let workers = JSON.parse(localStorage.getItem('medicalReceiptWorkers')) || [
-            // { id: 1, name: "Juan González", ci: "V-12345678", familiar: "Ana González" }
-        ];
-        let services = JSON.parse(localStorage.getItem('medicalReceiptServices')) || [
-            // { id: 1, description: "Consulta Ginecológica", price: 60.00 },
-            // { id: 2, description: "Eco Transvaginal", price: 50.00 }
-        ];
+        let emitters = JSON.parse(localStorage.getItem('medicalReceiptEmitters')) || [];
+        let recipients = JSON.parse(localStorage.getItem('medicalReceiptRecipients')) || [];
+        let workers = JSON.parse(localStorage.getItem('medicalReceiptWorkers')) || [];
+        let services = JSON.parse(localStorage.getItem('medicalReceiptServices')) || [];
 
         // --- SELECTORES DEL DOM (COMPLETOS) ---
         
@@ -538,6 +511,7 @@
 
         // Vista Previa (Preview)
         const previewEmitterName = document.getElementById('preview-emitter-name');
+        const previewEmitterRif = document.getElementById('preview-emitter-rif');
         const previewEmitterDesc = document.getElementById('preview-emitter-desc');
         const previewDate = document.getElementById('preview-date');
         const previewReceiptNumberWrapper = document.getElementById('preview-receipt-number-wrapper');
@@ -570,6 +544,7 @@
         const emitterForm = document.getElementById('emitter-form');
         const emitterEditId = document.getElementById('emitter-edit-id');
         const emitterNameInput = document.getElementById('emitter-name-input');
+        const emitterRifInput = document.getElementById('emitter-rif-input');
         const emitterDescInput = document.getElementById('emitter-desc-input');
         const emitterCorrelativeInput = document.getElementById('emitter-correlative-input');
         const emitterSubmitBtn = document.getElementById('emitter-submit-btn');
@@ -605,12 +580,36 @@
         const serviceEditId = document.getElementById('service-edit-id');
         const serviceDescInput = document.getElementById('service-desc-input');
         const servicePriceInput = document.getElementById('service-price-input');
-        const serviceQuantityModalInput = document.getElementById('service-quantity-input'); // Renombrado para evitar conflicto
+        const serviceQuantityModalInput = document.getElementById('service-quantity-input');
         const serviceSubmitBtn = document.getElementById('service-submit-btn');
         const servicesList = document.getElementById('services-list');
 
 
         // --- FUNCIONES DE UTILIDAD ---
+        
+        // Función para formato Nombre Propio (AHORA SOLO SE USA PARA PACIENTES)
+        const toProperCase = (str) => {
+            if (!str) return '';
+            return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+        };
+        
+        // Función para formato RIF
+        const formatRIF = (rif) => {
+            if (!rif) return '';
+            let value = rif.toUpperCase().replace(/[^VEJPG0-9]/g, ''); // Permitir V, E, J, P, G y números
+            let prefix = value.charAt(0);
+            
+            if (!isNaN(prefix) || !['V', 'E', 'J', 'P', 'G'].includes(prefix)) {
+                prefix = 'J'; // Default a J si es inválido o número
+                value = 'J' + value.replace(/[^0-9]/g, ''); // Limpiar no números
+            } else {
+                value = value.substring(1); // Quitar prefijo para limpiar números
+            }
+            
+            value = value.replace(/[^0-9]/g, ''); // Limpiar solo números
+            return `${prefix}-${value}`.substring(0, 12); // Limitar longitud J-12345678-9
+        };
+
         const formatCurrency = (value, type = 'VES') => {
             if (type === 'USD') {
                 return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -644,10 +643,9 @@
             let value = ci.toUpperCase().replace(/[^VEJP0-9]/g, ''); // Permitir V, E, J, P y números
             let prefix = value.charAt(0);
             
-            // Si no empieza con V, E, J, P, poner V por defecto si es número
-            if (!isNaN(prefix)) {
+            if (!isNaN(prefix) || !['V', 'E', 'J', 'P'].includes(prefix)) {
                 prefix = 'V';
-                value = 'V' + value;
+                value = 'V' + value.replace(/[^0-9]/g, '');
             } else {
                 value = value.substring(1); // Quitar prefijo para limpiar números
             }
@@ -664,7 +662,7 @@
             emitterOptions.innerHTML = '';
             emitters.forEach(e => {
                 const option = document.createElement('option');
-                option.value = `${e.name} (${e.desc})`;
+                option.value = `${e.name} (${e.rif || e.desc})`;
                 option.dataset.id = e.id;
                 emitterOptions.appendChild(option);
             });
@@ -678,7 +676,7 @@
                 li.innerHTML = `
                     <div>
                         <span class="font-semibold">${e.name}</span>
-                        <span class="text-sm text-purple-700 ml-2">(${e.desc}) ${e.useCorrelative ? '<i class="fas fa-hashtag text-xs ml-1" title="Usa correlativo"></i>' : ''}</span>
+                        <span class="text-sm text-purple-700 ml-2">(${e.rif ? e.rif + ' - ' : ''}${e.desc}) ${e.useCorrelative ? '<i class="fas fa-hashtag text-xs ml-1" title="Usa correlativo"></i>' : ''}</span>
                     </div>
                     <div>
                         <button class="edit-btn-list" data-id="${e.id}"><i class="fas fa-pencil-alt"></i></button>
@@ -789,6 +787,9 @@
             previewBcvRate.textContent = formatCurrency(bcvRate, 'VES');
         };
         
+        // ==================================================================
+        // ===== FUNCIÓN RENDER PREVIEW (MODIFICADA) =====
+        // ==================================================================
         const renderReceiptPreview = () => {
             if (receiptItems.length === 0) {
                 receiptItemsContainer.innerHTML = '<p class="text-center text-gray-500 py-10">Aún no se han agregado items al recibo.</p>';
@@ -800,22 +801,32 @@
             receiptItems.sort((a, b) => new Date(a.serviceDate) - new Date(b.serviceDate));
 
             let tableHtml = `
-                <table class="w-full text-left border-t border-b border-gray-200">
-                    <thead class="bg-purple-50 text-purple-900">
-                        <tr>
-                            <th class="p-2 font-semibold">N°</th>
-                            <th class="p-2 font-semibold">Fecha Serv.</th>
-                            <th class="p-2 font-semibold">Nombres / C.I / Paciente</th>
-                            <th class="p-2 font-semibold">Servicio</th>
-                            <th class="p-2 font-semibold text-center">Cant.</th>
-                            <th class="p-2 font-semibold text-right">P/U ($)</th>
-                            <th class="p-2 font-semibold text-right">Total ($)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <!-- NUEVO: Wrapper para scroll horizontal en móvil -->
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <!-- NUEVO: min-w-[800px] para forzar scroll en lugar de comprimir -->
+                    <table class="w-full min-w-[800px] text-left">
+                        <thead class="bg-purple-50 text-purple-900">
+                            <tr>
+                                <th class="p-2 font-semibold">N°</th>
+                                <th class="p-2 font-semibold">Fecha Serv.</th>
+                                <th class="p-2 font-semibold">Nombres / C.I / Paciente</th>
+                                <th class="p-2 font-semibold">Servicio</th>
+                                <th class="p-2 font-semibold text-center">Cant.</th>
+                                <th class="p-2 font-semibold text-right">P/U ($)</th>
+                                <th class="p-2 font-semibold text-right">Total ($)</th>
+                                <!-- NUEVA COLUMNA -->
+                                <th class="p-2 font-semibold text-right">Total (Bs.)</th>
+                                <!-- NUEVA COLUMNA -->
+                                <th class="p-2 font-semibold text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
             
             receiptItems.forEach((item, index) => {
+                // NUEVO: Cálculo de Total Bs. por item
+                const totalBsItem = formatCurrency((item.price * item.quantity) * bcvRate, 'VES');
+                
                 tableHtml += `
                     <tr class="border-t border-gray-200">
                         <td class="p-2 font-bold">${index + 1}</td>
@@ -829,11 +840,17 @@
                         <td class="p-2 text-center">${item.quantity}</td>
                         <td class="p-2 text-right">${formatCurrency(item.price, 'USD')}</td>
                         <td class="p-2 text-right font-bold">${formatCurrency(item.price * item.quantity, 'USD')}</td>
+                        <!-- NUEVA CELDA -->
+                        <td class="p-2 text-right font-bold text-purple-700">${totalBsItem}</td>
+                        <!-- NUEVA CELDA -->
+                        <td class="p-2 text-center">
+                            <button class="delete-item-btn" data-id="${item.id}" title="Eliminar item">&times;</button>
+                        </td>
                     </tr>
                 `;
             });
 
-            tableHtml += '</tbody></table>';
+            tableHtml += '</tbody></table></div>'; // Cerrar tabla y wrapper div
             receiptItemsContainer.innerHTML = tableHtml;
             renderTotals();
         };
@@ -858,18 +875,20 @@
         emitterForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = parseInt(emitterEditId.value);
+            // ===== CAMBIO AQUÍ: Se eliminó toProperCase =====
             const name = emitterNameInput.value.trim();
+            const rif = emitterRifInput.value.trim();
             const desc = emitterDescInput.value.trim();
             const useCorrelative = emitterCorrelativeInput.checked;
 
             if (id) { // Editando
                 const index = emitters.findIndex(e => e.id === id);
                 if (index !== -1) {
-                    emitters[index] = { id, name, desc, useCorrelative };
+                    emitters[index] = { id, name, rif, desc, useCorrelative };
                 }
             } else { // Creando
                 const newId = emitters.length > 0 ? Math.max(...emitters.map(e => e.id)) + 1 : 1;
-                emitters.push({ id: newId, name, desc, useCorrelative });
+                emitters.push({ id: newId, name, rif, desc, useCorrelative });
             }
             
             saveToLocalStorage('medicalReceiptEmitters', emitters);
@@ -882,6 +901,7 @@
         recipientForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = parseInt(recipientEditId.value);
+            // ===== CAMBIO AQUÍ: Se eliminó toProperCase =====
             const name = recipientNameInput.value.trim();
             const rif = recipientRifInput.value.trim();
             const address = recipientAddressInput.value.trim();
@@ -907,9 +927,10 @@
         workerForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = parseInt(workerEditId.value);
-            const name = workerNameInput.value.trim();
+            // (Se mantiene toProperCase para pacientes, según lo solicitado)
+            const name = toProperCase(workerNameInput.value.trim());
             const ci = workerCiInput.value.trim();
-            const familiar = workerFamiliarInput.value.trim();
+            const familiar = toProperCase(workerFamiliarInput.value.trim());
 
             if (id) { // Editando
                 const index = workers.findIndex(w => w.id === id);
@@ -971,6 +992,7 @@
                 if (emitter) {
                     emitterEditId.value = emitter.id;
                     emitterNameInput.value = emitter.name;
+                    emitterRifInput.value = emitter.rif;
                     emitterDescInput.value = emitter.desc;
                     emitterCorrelativeInput.checked = emitter.useCorrelative;
                     emitterSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
@@ -978,7 +1000,6 @@
             }
             if (deleteBtn) {
                 const id = parseInt(deleteBtn.dataset.id);
-                // Aquí se podría usar un modal de confirmación
                 emitters = emitters.filter(e => e.id !== id);
                 saveToLocalStorage('medicalReceiptEmitters', emitters);
                 renderEmittersList();
@@ -1043,7 +1064,7 @@
                     serviceEditId.value = service.id;
                     serviceDescInput.value = service.description;
                     servicePriceInput.value = service.price.toFixed(2);
-                    serviceQuantityModalInput.value = '1'; // Resetear a 1
+                    serviceQuantityModalInput.value = '1';
                     serviceSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
                 }
             }
@@ -1069,12 +1090,12 @@
             const service = services.find(s => s.id === serviceId);
             
             if (!worker || !service || isNaN(quantity) || quantity < 1 || !serviceDate) {
-                 // Aquí se podría usar un modal de error
                 console.warn("Datos incompletos para añadir item.");
                 return;
             }
             
-            const patientName = patientNameInput.value.trim() || worker.familiar; // Usar input o familiar por defecto
+            // (Se mantiene toProperCase para pacientes)
+            const patientName = toProperCase(patientNameInput.value.trim() || worker.familiar);
 
             receiptItems.push({
                 id: Date.now(), // ID simple para el item del recibo
@@ -1097,20 +1118,32 @@
             serviceSelectId.value = '';
             serviceQuantityInput.value = '1';
             servicePriceDisplay.textContent = '$0.00';
-            // Poner fecha de servicio en la fecha de hoy (o la del recibo)
             serviceDateInput.value = receiptDateInput.value || new Date().toISOString().split('T')[0];
         });
+
+        // ==================================================================
+        // ===== NUEVO EVENT LISTENER: Eliminar item del recibo =====
+        // ==================================================================
+        receiptItemsContainer.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-item-btn');
+            if (deleteBtn) {
+                const idToDelete = parseInt(deleteBtn.dataset.id);
+                receiptItems = receiptItems.filter(item => item.id !== idToDelete);
+                renderReceiptPreview(); // Re-renderizar la tabla y los totales
+            }
+        });
+
 
         // Eventos Generales (Inputs que afectan la UI)
         bcvRateInput.addEventListener('input', () => {
             bcvRate = parseFloat(bcvRateInput.value) || 0.0;
-            renderTotals();
+            // NUEVO: Re-renderizar la tabla completa para actualizar Total (Bs.) de cada item
+            renderReceiptPreview();
         });
         
         receiptDateInput.addEventListener('input', () => {
             const date = new Date(receiptDateInput.value + 'T00:00:00-04:00'); // Ajustar a zona horaria Vzla
             previewDate.textContent = date.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
-            // Sincronizar fecha de servicio por defecto
             if (!serviceDateInput.value) {
                 serviceDateInput.value = receiptDateInput.value;
             }
@@ -1121,20 +1154,20 @@
             if (id) {
                 const emitter = emitters.find(e => e.id === id);
                 previewEmitterName.textContent = emitter.name;
+                previewEmitterRif.textContent = emitter.rif;
                 previewEmitterDesc.textContent = emitter.desc;
                 emitterSelectId.value = emitter.id;
                 
-                // Lógica de Correlativo
                 if (emitter.useCorrelative) {
                     receiptNumberInput.value = String(nextReceiptNumber).padStart(3, '0');
                     receiptNumberInput.disabled = true;
-                    // Disparar evento de input para actualizar preview
                     receiptNumberInput.dispatchEvent(new Event('input'));
                 } else {
                     receiptNumberInput.disabled = false;
                 }
             } else {
                 previewEmitterName.textContent = 'Nombre del Emisor';
+                previewEmitterRif.textContent = '';
                 previewEmitterDesc.textContent = 'Descripción';
                 emitterSelectId.value = '';
                 receiptNumberInput.disabled = false;
@@ -1164,11 +1197,11 @@
              if (id) {
                  const worker = workers.find(w => w.id === id);
                  if (worker && worker.familiar) {
-                     patientNameInput.value = worker.familiar; // Autocompletar familiar
+                     patientNameInput.value = worker.familiar;
                  }
                  workerSelectId.value = worker.id;
              } else {
-                 patientNameInput.value = ''; // Limpiar si no se selecciona
+                 patientNameInput.value = '';
                  workerSelectId.value = '';
              }
         });
@@ -1183,6 +1216,14 @@
                  servicePriceDisplay.textContent = '$0.00';
                  serviceSelectId.value = '';
              }
+        });
+        
+        emitterRifInput.addEventListener('input', (e) => {
+            e.target.value = formatRIF(e.target.value);
+        });
+        
+        recipientRifInput.addEventListener('input', (e) => {
+            e.target.value = formatRIF(e.target.value);
         });
         
         workerCiInput.addEventListener('input', (e) => {
@@ -1201,7 +1242,7 @@
         });
         
         // ==================================================================
-        // ===== LÓGICA DE DESCARGA PDF CON JSPD (CORREGIDA) =====
+        // ===== LÓGICA DE DESCARGA PDF CON JSPD (SIN CAMBIOS) =====
         // ==================================================================
         
         downloadPdfButton.addEventListener('click', () => {
@@ -1214,9 +1255,8 @@
             
             try {
                 // 1. Inicialización de jsPDF
-                const doc = new window.jspdf.jsPDF('p', 'mm', 'a4'); // p = portrait, mm = milímetros, a4 = tamaño de página
+                const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
                 
-                // Definir márgenes y posiciones
                 const margin = 15;
                 let yPos = margin;
                 const pageWidth = doc.internal.pageSize.getWidth();
@@ -1224,39 +1264,43 @@
 
                 // --- 2. Encabezado (Emisor e Info de Recibo) ---
                 
-                // Obtener datos del DOM
                 const emitterName = previewEmitterName.textContent.trim();
+                const emitterRif = previewEmitterRif.textContent.trim();
                 const emitterDesc = previewEmitterDesc.textContent.trim();
                 const date = previewDate.textContent.trim();
                 const receiptNumber = previewReceiptNumberWrapper.style.display !== 'none' 
                                       ? previewReceiptNumber.textContent.trim() 
                                       : null;
 
-                // Forzar estilos de Emisor
                 doc.setFont('Helvetica', 'bold');
                 doc.setFontSize(16);
                 doc.setTextColor(76, 29, 149); // purple-900
                 doc.text(emitterName, margin, yPos);
                 
-                doc.setFont('Helvetica', 'normal'); // Resetear a normal para fecha
+                doc.setFont('Helvetica', 'normal');
                 doc.setFontSize(10);
-                doc.setTextColor(0, 0, 0); // Resetear a negro para la fecha
+                doc.setTextColor(0, 0, 0);
                 doc.text(`Fecha: ${date}`, pageWidth - margin, yPos, { align: 'right' });
-                yPos += 5; // Moverse hacia abajo
+                yPos += 5;
                 
                 doc.setFont('Helvetica', 'normal');
                 doc.setFontSize(10);
                 doc.setTextColor(107, 33, 168); // purple-700
+                
+                if (emitterRif) {
+                    doc.text(emitterRif, margin, yPos);
+                    yPos += 5;
+                }
                 doc.text(emitterDesc, margin, yPos);
                 
-                doc.setTextColor(0, 0, 0); // Resetear a negro para N° Recibo
+                doc.setTextColor(0, 0, 0);
                 if (receiptNumber) {
                     doc.text(`Recibo N°: ${receiptNumber}`, pageWidth - margin, yPos, { align: 'right' });
                 }
                 
                 yPos += 10;
                 doc.setDrawColor(229, 231, 235); // gray-200
-                doc.line(margin, yPos, pageWidth - margin, yPos); // Línea separadora
+                doc.line(margin, yPos, pageWidth - margin, yPos);
                 yPos += 10;
 
                 // --- 3. Información del Receptor ---
@@ -1265,23 +1309,22 @@
                 const address = previewRecipientAddress.textContent.trim();
                 const phone = previewRecipientPhone.textContent.trim();
 
-                doc.setFont('Helvetica', 'bold'); // Receptor Nombre en Negrita
+                doc.setFont('Helvetica', 'bold');
                 doc.setFontSize(11);
                 doc.text(recipientName, margin, yPos);
                 yPos += 5;
                 
-                doc.setFont('Helvetica', 'normal'); // Resetear a normal
+                doc.setFont('Helvetica', 'normal');
                 doc.setFontSize(10);
                 if (rif) doc.text(rif, margin, yPos);
                 yPos += 5;
                 
-                // Usar splitTextToSize para manejar direcciones largas
-                const addressLines = doc.splitTextToSize(address, usableWidth * 0.75); // Limitar a 3/4 de página
+                const addressLines = doc.splitTextToSize(address, usableWidth * 0.75);
                 doc.text(addressLines, margin, yPos);
-                yPos += (addressLines.length * 4) + 2; // Ajustar yPos basado en líneas de dirección
+                yPos += (addressLines.length * 4) + 2;
                 
                 if (phone) doc.text(phone, margin, yPos);
-                yPos += 15; // Espacio antes de la tabla
+                yPos += 15;
 
                 // --- 4. Título de la Tabla ---
                 doc.setFont('Helvetica', 'bold');
@@ -1292,19 +1335,15 @@
 
                 // --- 5. Tabla de Items (jsPDF-AutoTable) ---
                 
-                // Encabezados de la tabla
                 const tableHead = [
                     ['N°', 'Fecha', 'Nombres/C.I/Paciente', 'Servicio', 'Cant.', 'P/U ($)', 'Total ($)', 'Total (Bs.)']
                 ];
 
-                // Cuerpo de la tabla (mapeando 'receiptItems')
-                // (receiptItems ya está ordenado por fecha gracias a renderReceiptPreview)
                 const tableBody = receiptItems.map((item, index) => {
                     const formattedDate = formatDateDDMMYY(item.serviceDate);
-                    // AutoTable maneja saltos de línea (\n)
                     const patientInfo = `${item.workerName}\n${item.workerCi}${item.patientName ? `\nPaciente: ${item.patientName}` : ''}`;
-                    const unitPrice = formatCurrency(item.price, 'PDF_USD'); // Formato numérico
-                    const totalUSD = formatCurrency(item.quantity * item.price, 'PDF_USD'); // Formato numérico
+                    const unitPrice = formatCurrency(item.price, 'PDF_USD');
+                    const totalUSD = formatCurrency(item.quantity * item.price, 'PDF_USD');
                     const totalBS = formatCurrency((item.quantity * item.price) * bcvRate, 'VES');
                     
                     return [
@@ -1323,7 +1362,7 @@
                     startY: yPos,
                     head: tableHead,
                     body: tableBody,
-                    theme: 'plain', // 'striped', 'grid', 'plain'
+                    theme: 'plain',
                     headStyles: {
                         fillColor: [245, 243, 255], // purple-50
                         textColor: [88, 28, 135], // purple-900
@@ -1341,9 +1380,9 @@
                     },
                     columnStyles: {
                         0: { cellWidth: 8, halign: 'center' }, // N°
-                        1: { cellWidth: 20 }, // Fecha (Ajustado de 18)
+                        1: { cellWidth: 20 }, // Fecha
                         2: { cellWidth: 'auto' }, // Nombres
-                        3: { cellWidth: 28 }, // Servicio (Ajustado de 30)
+                        3: { cellWidth: 28 }, // Servicio
                         4: { cellWidth: 10, halign: 'center' }, // Cant.
                         5: { cellWidth: 20, halign: 'right' }, // P/U
                         6: { cellWidth: 20, halign: 'right' }, // Total $
@@ -1351,9 +1390,6 @@
                     },
                     willDrawCell: (data) => {
                         if (data.section === 'body') {
-                            // Columnas 0 (N°), 2 (Nombres), 6 (Total $)
-                            // CORRECCIÓN: Usar data.cell.styles.fontStyle en lugar de doc.setFont
-                            // para asegurar que el estilo se aplique a celdas con múltiples líneas.
                             if (data.column.index === 0 || data.column.index === 2 || data.column.index === 6) {
                                 data.cell.styles.fontStyle = 'bold';
                             } else {
@@ -1362,67 +1398,58 @@
                         }
                     },
                     didDrawPage: (data) => {
-                        // Actualizar yPos para el contenido después de la tabla (en caso de salto de página)
                         yPos = data.cursor.y;
                     }
                 });
  
                 // --- 6. Totales (con recuadro) ---
-                yPos += 8; // Espacio después de la tabla
+                yPos += 8;
 
-                // Obtener datos de los totales
                 const subtotal = subtotalUsd.textContent;
                 const bcv = previewBcvRate.textContent;
                 const total = totalBs.textContent;
                 
-                // Definir dimensiones del recuadro
-                const rectX = pageWidth / 2 - 10; // Empezar un poco a la izq. del centro
+                const rectX = pageWidth / 2 - 10;
                 const rectY = yPos;
-                const rectWidth = (pageWidth - margin) - rectX; // Hasta el margen derecho
-                const rectHeight = 26; // Alto fijo para 3 líneas + padding + línea
-                const borderRadius = 3; // Bordes redondeados
+                const rectWidth = (pageWidth - margin) - rectX;
+                const rectHeight = 26;
+                const borderRadius = 3;
                 
-                // Dibujar el recuadro
                 doc.setFillColor(245, 243, 255); // purple-50
-                doc.roundedRect(rectX, rectY, rectWidth, rectHeight, borderRadius, borderRadius, 'F'); // 'F' = Fill (Rellenar)
+                doc.roundedRect(rectX, rectY, rectWidth, rectHeight, borderRadius, borderRadius, 'F');
 
-                // Posiciones del texto dentro del recuadro
-                let textY = rectY + 7; // Padding superior
-                const labelX = rectX + 5; // Padding izquierdo para etiquetas
-                const valueX = rectX + rectWidth - 5; // Padding derecho para valores
+                let textY = rectY + 7;
+                const labelX = rectX + 5;
+                const valueX = rectX + rectWidth - 5;
 
-                // Dibujar Subtotal
                 doc.setFont('Helvetica', 'bold');
                 doc.setFontSize(10);
-                doc.setTextColor(0, 0, 0); // Negro
+                doc.setTextColor(0, 0, 0);
                 doc.text('Subtotal ($)', labelX, textY);
                 doc.setFont('Helvetica', 'normal');
                 doc.text(subtotal, valueX, textY, { align: 'right' });
                 textY += 6;
 
-                // Dibujar Tasa BCV
                 doc.setFont('Helvetica', 'bold');
                 doc.setTextColor(107, 33, 168); // purple-700
                 doc.text('Tasa BCV', labelX, textY);
                 doc.setFont('Helvetica', 'normal');
                 doc.text(`Bs. ${bcv}`, valueX, textY, { align: 'right' });
-                textY += 5; // Espacio antes de la línea
+                textY += 5;
 
-                // Dibujar línea separadora
                 doc.setDrawColor(221, 214, 254); // purple-200
                 doc.setLineWidth(0.5);
                 doc.line(rectX + 2, textY, rectX + rectWidth - 2, textY);
-                textY += 6; // Espacio después de la línea
+                textY += 6;
 
-                // Dibujar TOTAL
                 doc.setFont('Helvetica', 'bold');
-                doc.setFontSize(11); // Un poco más grande
+                doc.setFontSize(11);
                 doc.setTextColor(67, 56, 202); // purple-800
                 doc.text('TOTAL (Bs.)', labelX, textY);
                 doc.text(total, valueX, textY, { align: 'right' });
 
                 // --- 7. Pie de Página ---
-                yPos = doc.internal.pageSize.getHeight() - 15; // Posición fija en la parte inferior
+                yPos = doc.internal.pageSize.getHeight() - 15;
                 doc.setFont('Helvetica', 'normal');
                 doc.setFontSize(8);
                 doc.setTextColor(156, 163, 175); // gray-400
@@ -1446,7 +1473,6 @@
                     nextReceiptNumber = numberUsed + 1;
                     localStorage.setItem('receiptCorrelative', JSON.stringify(nextReceiptNumber));
                     
-                    // Actualizar el input para el *siguiente* recibo
                     receiptNumberInput.value = String(nextReceiptNumber).padStart(3, '0');
                     receiptNumberInput.dispatchEvent(new Event('input'));
                 }
@@ -1457,7 +1483,6 @@
 
             } catch (error) {
                 console.error("Error al generar PDF con jsPDF: ", error);
-                // Resetear el botón en caso de error
                 downloadPdfButton.disabled = false;
                 downloadPdfButton.innerHTML = originalButtonHtml;
             }
@@ -1486,7 +1511,6 @@
         receiptDateInput.value = today;
         serviceDateInput.value = today; 
         previewDate.textContent = new Date().toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
-        // Disparar evento para lógica condicional inicial
         receiptNumberInput.dispatchEvent(new Event('input')); 
 
         // Renderizar todo al cargar
@@ -1494,10 +1518,8 @@
         renderRecipientsList();
         renderWorkersList();
         renderServicesList();
-        renderReceiptPreview(); // Llama a renderTotals internamente
+        renderReceiptPreview();
     });
     </script>
 </body>
 </html>
-
-
