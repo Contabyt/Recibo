@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Recibos Médicos</title>
+    <title>Servicios Médicos Prestados</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Iconos Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -153,7 +153,7 @@
 
     <div class="container mx-auto p-4 lg:p-8">
         <header class="text-center mb-8 no-print">
-            <h1 class="text-4xl font-bold text-fuchsia-600 flex items-center justify-center"><i class="fas fa-receipt mr-3"></i>Generador de Recibos</h1>
+            <h1 class="text-4xl font-bold text-fuchsia-600 flex items-center justify-center"><i class="fas fa-file-invoice-dollar mr-3"></i>Servicios Médicos Prestados</h1>
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -275,8 +275,9 @@
                     <header class="flex justify-between items-start pb-4 border-b-2 border-gray-200">
                         <div>
                             <h2 id="preview-emitter-name" class="text-lg font-bold text-purple-900">Nombre del Emisor</h2>
-                            <p id="preview-emitter-rif" class="text-purple-700 text-sm"></p>
+                            <!-- CAMBIO DE ORDEN -->
                             <p id="preview-emitter-desc" class="text-purple-700 text-sm">Descripción</p>
+                            <p id="preview-emitter-rif" class="text-purple-700 text-sm"></p>
                         </div>
                         <div class="text-right text-sm text-gray-500">
                             <p class="font-semibold">Fecha: <span id="preview-date">--/--/----</span></p>
@@ -305,7 +306,8 @@
                         <div class="w-full md:w-1/2 lg:w-2/3">
                             <div class="bg-purple-50 p-4 rounded-lg space-y-2">
                                 <div class="flex justify-between text-base font-semibold">
-                                    <span>Subtotal ($)</span>
+                                    <!-- CAMBIO DE ETIQUETA -->
+                                    <span>Total ($)</span>
                                     <span id="subtotal-usd">$0.00</span>
                                 </div>
                                 <div class="flex justify-between text-base text-purple-700">
@@ -1204,9 +1206,25 @@
             renderReceiptPreview();
         });
         
+        // --- CAMBIO: Lógica de fecha corregida ---
         receiptDateInput.addEventListener('input', () => {
-            const date = new Date(receiptDateInput.value + 'T00:00:00-04:00'); // Ajustar a zona horaria Vzla
-            previewDate.textContent = date.toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
+            const dateStr = receiptDateInput.value; // e.g., "2025-11-03"
+            if (!dateStr) {
+                previewDate.textContent = '--/--/----';
+                return;
+            }
+            
+            // Parsear la fecha como UTC para evitar corrimientos de zona horaria
+            const [year, month, day] = dateStr.split('-');
+            if (year && month && day) {
+                // Crear la fecha como si fuera UTC para evitar corrimientos
+                const dateObj = new Date(Date.UTC(year, month - 1, day)); 
+                // Formatear a es-VE, pero forzando UTC para que no se mueva el día
+                previewDate.textContent = dateObj.toLocaleDateString('es-VE', { timeZone: 'UTC' });
+            } else {
+                previewDate.textContent = '--/--/----';
+            }
+
             if (!serviceDateInput.value) {
                 serviceDateInput.value = receiptDateInput.value;
             }
@@ -1498,11 +1516,13 @@
                 doc.setFontSize(10);
                 doc.setTextColor(107, 33, 168); // purple-700
                 
+                // --- CAMBIO DE ORDEN PDF ---
+                doc.text(emitterDesc, margin, yPos);
+                yPos += 5;
+                
                 if (emitterRif) {
                     doc.text(emitterRif, margin, yPos);
-                    yPos += 5;
                 }
-                doc.text(emitterDesc, margin, yPos);
                 
                 doc.setTextColor(0, 0, 0);
                 if (receiptNumber) {
@@ -1617,7 +1637,14 @@
                 yPos += 8;
 
                 const subtotal = subtotalUsd.textContent;
-                const bcv = previewBcvRate.textContent;
+                // --- CAMBIO: Lógica de 5 decimales para PDF ---
+                // Obtener tasa BCV con 5 decimales para el PDF
+                const rawBcv = parseFloat(bcvRateInput.value) || 0.0;
+                const bcvForPdf = rawBcv.toLocaleString('es-VE', { 
+                    minimumFractionDigits: 5, 
+                    maximumFractionDigits: 5 
+                });
+                
                 const total = totalBs.textContent;
                 
                 const rectX = pageWidth / 2 - 10;
@@ -1636,16 +1663,19 @@
                 doc.setFont('Helvetica', 'bold');
                 doc.setFontSize(10);
                 doc.setTextColor(0, 0, 0);
-                doc.text('Subtotal ($)', labelX, textY);
+                // --- CAMBIO DE ETIQUETA PDF ---
+                doc.text('Total ($)', labelX, textY);
                 doc.setFont('Helvetica', 'normal');
                 doc.text(subtotal, valueX, textY, { align: 'right' });
                 textY += 6;
 
-                doc.setFont('Helvetica', 'bold');
+                // --- CAMBIO: Tasa BCV no va en negrita ---
+                doc.setFont('Helvetica', 'normal'); 
                 doc.setTextColor(107, 33, 168); // purple-700
                 doc.text('Tasa BCV', labelX, textY);
                 doc.setFont('Helvetica', 'normal');
-                doc.text(`Bs. ${bcv}`, valueX, textY, { align: 'right' });
+                // --- CAMBIO: Usar 5 decimales ---
+                doc.text(`Bs. ${bcvForPdf}`, valueX, textY, { align: 'right' }); 
                 textY += 5;
 
                 doc.setDrawColor(221, 214, 254); // purple-200
@@ -1773,7 +1803,8 @@
         // (La variable 'today' ya se definió para el modal de reseteo)
         receiptDateInput.value = today;
         serviceDateInput.value = today; 
-        previewDate.textContent = new Date().toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
+        // --- CAMBIO: Disparar evento para cargar fecha en preview ---
+        receiptDateInput.dispatchEvent(new Event('input')); 
         receiptNumberInput.dispatchEvent(new Event('input')); 
 
         // Renderizar todo al cargar
@@ -1786,3 +1817,4 @@
     </script>
 </body>
 </html>
+
