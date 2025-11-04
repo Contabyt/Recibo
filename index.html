@@ -75,7 +75,7 @@
             color: white;
         }
         
-        /* NUEVO: Botón para eliminar item de la tabla del recibo */
+        /* Botón para eliminar item de la tabla del recibo */
         .delete-item-btn {
             background: #fef2f2; /* red-50 */
             color: #ef4444; /* red-500 */
@@ -99,11 +99,9 @@
         
 
         /* --- INICIO DE CORRECCIÓN DE PDF --- */
-        /* Reducir padding y tamaños de fuente para que el PDF se genere más compacto */
         #receipt-preview {
             padding: 1.25rem; /* p-5, más pequeño que p-8 */
         }
-        /* Estos estilos anulan las clases de Tailwind dentro de la vista previa para el renderizado */
         #receipt-preview header h2 { font-size: 1rem; } /* text-base */
         #receipt-preview header p { font-size: 0.875rem; } /* text-sm */
         #receipt-preview header .text-right { font-size: 0.875rem; } /* text-sm */
@@ -125,7 +123,6 @@
             margin-bottom: 0.5rem;
         }
 
-        /* Reducir el tamaño de fuente de la tabla (muy importante) */
         #receipt-items-container table {
             font-size: 8pt; /* Usar 'pt' es más consistente para PDF */
             line-height: 1.2;
@@ -135,7 +132,6 @@
             padding: 3px 4px; /* Padding de celdas más pequeño */
         }
         
-        /* Reducir espacio y tamaño en Totales */
         #receipt-preview section.mt-8 { 
             margin-top: 1rem; /* Menos espacio arriba de los totales */
         }
@@ -145,7 +141,6 @@
         #receipt-preview .bg-purple-50 .text-base { font-size: 9pt; }
         #receipt-preview .bg-purple-50 .text-xl { font-size: 10pt; font-weight: 700; }
         
-        /* Pie de página */
         #receipt-preview footer.mt-12 {
             margin-top: 1.5rem; /* mt-6 */
             font-size: 7pt; /* Muy pequeño, como en los recibos de referencia */
@@ -158,7 +153,6 @@
 
     <div class="container mx-auto p-4 lg:p-8">
         <header class="text-center mb-8 no-print">
-            <!-- MODIFICADO: Añadido icono y flex para centrar -->
             <h1 class="text-4xl font-bold text-fuchsia-600 flex items-center justify-center"><i class="fas fa-receipt mr-3"></i>Generador de Recibos</h1>
         </header>
 
@@ -167,12 +161,10 @@
             <div class="bg-white p-6 rounded-2xl shadow-lg no-print space-y-8 lg:col-span-1">
                 <!-- Información General -->
                 <div>
-                    <!-- MODIFICADO: Añadido icono y flex -->
                     <h2 class="text-2xl font-bold mb-6 border-b pb-3 text-purple-800 flex items-center"><i class="fas fa-info-circle mr-2"></i>Información General</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- CAMPO EMISOR (DATALIST) -->
                         <div>
-                            <!-- MODIFICADO: Eliminado (DE:) -->
                             <label for="emitter-input" class="block text-sm font-medium text-gray-900 mb-1">Emisor</label>
                             <input list="emitter-options" id="emitter-input" placeholder="Escriba para buscar o seleccionar..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 text-gray-800" required>
                             <datalist id="emitter-options"></datalist>
@@ -180,7 +172,6 @@
                         </div>
                         <!-- CAMPO RECEPTOR (DATALIST) -->
                         <div>
-                            <!-- MODIFICADO: Eliminado (PARA:) -->
                             <label for="recipient-input" class="block text-sm font-medium text-gray-900 mb-1">Ente Receptor</label>
                             <input list="recipient-options" id="recipient-input" placeholder="Escriba para buscar o seleccionar..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 text-gray-800" required>
                             <datalist id="recipient-options"></datalist>
@@ -203,7 +194,6 @@
 
                 <!-- Añadir Servicio al Recibo -->
                 <div>
-                    <!-- MODIFICADO: Añadido icono y flex -->
                     <h2 class="text-2xl font-bold mb-4 border-b pb-3 text-purple-800 flex items-center"><i class="fas fa-plus-circle mr-2"></i>Añadir al Recibo</h2>
                     <form id="add-item-form" class="space-y-4">
                         <!-- CAMPO TRABAJADOR (DATALIST) -->
@@ -252,7 +242,6 @@
                 
                  <!-- Gestión de Catálogos -->
                 <div class="space-y-4 pt-4">
-                    <!-- MODIFICADO: Añadido icono y flex -->
                     <h2 class="text-2xl font-bold mb-4 border-b pb-3 text-purple-800 flex items-center"><i class="fas fa-book-medical mr-2"></i>Gestión de Catálogos</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <button id="manage-emitters-btn" class="w-full bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-3 px-4 rounded-md flex items-center justify-center">
@@ -268,6 +257,14 @@
                             <i class="fas fa-stethoscope mr-2"></i> Gestionar Servicios
                         </button>
                     </div>
+                </div>
+
+                <!-- NUEVA SECCIÓN: Acciones de Recibos Guardados -->
+                <div class="space-y-4 pt-4">
+                    <h2 class="text-2xl font-bold mb-4 border-b pb-3 text-purple-800 flex items-center"><i class="fas fa-archive mr-2"></i>Historial de Recibos</h2>
+                    <button id="view-saved-receipts-btn" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold py-3 px-4 rounded-md flex items-center justify-center">
+                        <i class="fas fa-list-alt mr-2"></i> Ver Recibos Guardados
+                    </button>
                 </div>
 
             </div>
@@ -330,8 +327,9 @@
                     </footer>
                 </div>
                  <div class="text-center mt-6 no-print">
+                    <!-- BOTÓN MODIFICADO -->
                     <button id="download-pdf-button" class="bg-green-200 text-green-900 font-bold py-3 px-8 rounded-full hover:bg-green-300 transition duration-300 flex items-center justify-center mx-auto mb-2 w-full md:w-auto md:inline-flex shadow-lg shadow-green-200/50">
-                        <i class="fas fa-file-pdf mr-2"></i> Descargar PDF
+                        <i class="fas fa-save mr-2"></i> Guardar y Descargar PDF
                     </button>
                     <button id="reset-button" class="bg-yellow-200 text-yellow-900 font-bold py-3 px-8 rounded-full hover:bg-yellow-300 transition duration-300 md:ml-2 flex items-center justify-center mx-auto w-full md:w-auto md:inline-flex shadow-lg shadow-yellow-200/50">
                         <i class="fas fa-arrow-left mr-2"></i> Limpiar Formulario
@@ -475,6 +473,21 @@
         </div>
     </div>
 
+    <!-- NUEVO: Saved Receipts Modal -->
+    <div id="saved-receipts-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center no-print hidden z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-3xl text-gray-800">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-2xl font-bold text-purple-800">Recibos Guardados</h3>
+                <button id="close-saved-receipts-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <!-- List -->
+            <ul id="saved-receipts-list" class="space-y-3 max-h-96 overflow-y-auto pr-2 text-gray-800">
+                <!-- Recibos guardados se renderizan aquí -->
+            </ul>
+            <p id="no-saved-receipts-msg" class="text-center text-gray-500 py-4 hidden">No hay recibos guardados.</p>
+        </div>
+    </div>
+
     <!-- ===== FIN DE MODALS ===== -->
 
 
@@ -490,6 +503,9 @@
         let recipients = JSON.parse(localStorage.getItem('medicalReceiptRecipients')) || [];
         let workers = JSON.parse(localStorage.getItem('medicalReceiptWorkers')) || [];
         let services = JSON.parse(localStorage.getItem('medicalReceiptServices')) || [];
+        // NUEVO: Cargar recibos guardados
+        let savedReceipts = JSON.parse(localStorage.getItem('medicalSavedReceipts')) || [];
+
 
         // --- SELECTORES DEL DOM (COMPLETOS) ---
         
@@ -543,6 +559,14 @@
         const manageRecipientsBtn = document.getElementById('manage-recipients-btn');
         const manageWorkersBtn = document.getElementById('manage-workers-btn');
         const manageServicesBtn = document.getElementById('manage-services-btn');
+
+        // NUEVO: Selectores de Recibos Guardados
+        const viewSavedReceiptsBtn = document.getElementById('view-saved-receipts-btn');
+        const savedReceiptsModal = document.getElementById('saved-receipts-modal');
+        const closeSavedReceiptsModalBtn = document.getElementById('close-saved-receipts-modal-btn');
+        const savedReceiptsList = document.getElementById('saved-receipts-list');
+        const noSavedReceiptsMsg = document.getElementById('no-saved-receipts-msg');
+
 
         // Modal de Emisores
         const emittersModal = document.getElementById('emitters-modal');
@@ -623,7 +647,7 @@
             }
         };
 
-        // NUEVA: Función para formatear el RIF al guardar (submit)
+        // Función para formatear el RIF al guardar (submit)
         const finalizeRIF = (rif) => {
             if (!rif || rif.trim() === '') return '';
             let val = rif.trim().toUpperCase();
@@ -794,7 +818,6 @@
             serviceOptions.innerHTML = '';
             services.forEach(s => {
                 const option = document.createElement('option');
-                // MODIFICADO: Se elimina el precio del 'value'
                 option.value = s.description;
                 option.dataset.id = s.id;
                 serviceOptions.appendChild(option);
@@ -844,9 +867,9 @@
             receiptItems.sort((a, b) => new Date(a.serviceDate) - new Date(b.serviceDate));
 
             let tableHtml = `
-                <!-- NUEVO: Wrapper para scroll horizontal en móvil -->
+                <!-- Wrapper para scroll horizontal en móvil -->
                 <div class="overflow-x-auto rounded-lg border border-gray-200">
-                    <!-- NUEVO: min-w-[800px] para forzar scroll en lugar de comprimir -->
+                    <!-- min-w-[800px] para forzar scroll en lugar de comprimir -->
                     <table class="w-full min-w-[800px] text-left">
                         <thead class="bg-purple-50 text-purple-900">
                             <tr>
@@ -867,7 +890,7 @@
             `;
             
             receiptItems.forEach((item, index) => {
-                // NUEVO: Cálculo de Total Bs. por item
+                // Cálculo de Total Bs. por item
                 const totalBsItem = formatCurrency((item.price * item.quantity) * bcvRate, 'VES');
                 
                 tableHtml += `
@@ -918,9 +941,8 @@
         emitterForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = parseInt(emitterEditId.value);
-            // ===== CAMBIO AQUÍ: Se eliminó toProperCase =====
             const name = emitterNameInput.value.trim();
-            const rif = finalizeRIF(emitterRifInput.value); // MODIFICADO: Usar finalizeRIF
+            const rif = finalizeRIF(emitterRifInput.value);
             const desc = emitterDescInput.value.trim();
             const useCorrelative = emitterCorrelativeInput.checked;
 
@@ -944,9 +966,8 @@
         recipientForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = parseInt(recipientEditId.value);
-            // ===== CAMBIO AQUÍ: Se eliminó toProperCase =====
             const name = recipientNameInput.value.trim();
-            const rif = finalizeRIF(recipientRifInput.value); // MODIFICADO: Usar finalizeRIF
+            const rif = finalizeRIF(recipientRifInput.value);
             const address = recipientAddressInput.value.trim();
             const phone = recipientPhoneInput.value.trim();
 
@@ -970,7 +991,6 @@
         workerForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = parseInt(workerEditId.value);
-            // (Se eliminó toProperCase para corregir error con acentos)
             const name = workerNameInput.value.trim();
             const ci = workerCiInput.value.trim();
             const familiar = workerFamiliarInput.value.trim();
@@ -1000,7 +1020,8 @@
             const quantity = parseInt(serviceQuantityModalInput.value);
             
             if (isNaN(total) || isNaN(quantity) || quantity < 1 || total <= 0) {
-                alert("Por favor, ingrese un precio y cantidad válidos."); // Reemplazar por modal si se desea
+                // No usar alert()
+                console.error("Por favor, ingrese un precio y cantidad válidos.");
                 return;
             }
             
@@ -1009,12 +1030,10 @@
             if (id) { // Editando
                 const index = services.findIndex(s => s.id === id);
                 if (index !== -1) {
-                    // MODIFICADO: Guardar también la cantidad por defecto
                     services[index] = { id, description, price, defaultQuantity: quantity };
                 }
             } else { // Creando
                 const newId = services.length > 0 ? Math.max(...services.map(s => s.id)) + 1 : 1;
-                // MODIFICADO: Guardar también la cantidad por defecto
                 services.push({ id: newId, description, price, defaultQuantity: quantity });
             }
             
@@ -1107,10 +1126,8 @@
                 const service = services.find(s => s.id === id);
                 if (service) {
                     serviceEditId.value = service.id;
-                    // MODIFICADO: Cargar la cantidad por defecto y calcular el precio total
                     const defaultQty = service.defaultQuantity || 1;
                     serviceDescInput.value = service.description;
-                    // Calcular total price = P/U * defaultQty
                     servicePriceInput.value = (service.price * defaultQty).toFixed(2);
                     serviceQuantityModalInput.value = defaultQty;
                     serviceSubmitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Cambios';
@@ -1142,7 +1159,6 @@
                 return;
             }
             
-            // (Se eliminó toProperCase para corregir error con acentos)
             const patientName = (patientNameInput.value.trim() || worker.familiar);
 
             receiptItems.push({
@@ -1185,7 +1201,6 @@
         // Eventos Generales (Inputs que afectan la UI)
         bcvRateInput.addEventListener('input', () => {
             bcvRate = parseFloat(bcvRateInput.value) || 0.0;
-            // NUEVO: Re-renderizar la tabla completa para actualizar Total (Bs.) de cada item
             renderReceiptPreview();
         });
         
@@ -1260,12 +1275,10 @@
                  const service = services.find(s => s.id === id);
                  servicePriceDisplay.textContent = `$${formatCurrency(service.price, 'USD')}`;
                  serviceSelectId.value = service.id;
-                 // NUEVO: Asignar cantidad por defecto del servicio
                  serviceQuantityInput.value = service.defaultQuantity || 1;
              } else {
                  servicePriceDisplay.textContent = '$0.00';
                  serviceSelectId.value = '';
-                 // NUEVO: Resetear cantidad a 1
                  serviceQuantityInput.value = 1;
              }
         });
@@ -1293,8 +1306,146 @@
             }
         });
         
+
         // ==================================================================
-        // ===== LÓGICA DE DESCARGA PDF CON JSPD (SIN CAMBIOS) =====
+        // ===== NUEVAS FUNCIONES: Guardar, Cargar, Renderizar Guardados ====
+        // ==================================================================
+
+        const saveCurrentReceipt = (receiptNumber) => {
+            const emitterId = parseInt(emitterSelectId.value);
+            const recipientId = parseInt(recipientSelectId.value);
+            const date = receiptDateInput.value;
+            const bcv = bcvRateInput.value;
+            const number = receiptNumber || receiptNumberInput.value.trim() || null;
+            const items = receiptItems;
+            const subtotal = subtotalUsd.textContent;
+            const total = totalBs.textContent;
+            
+            if (!emitterId || !recipientId || items.length === 0) {
+                console.warn("Datos insuficientes para guardar el recibo (Falta emisor, receptor o items).");
+                return false; // Indicar que no se guardó
+            }
+
+            const savedReceipt = {
+                id: Date.now(),
+                emitterId,
+                recipientId,
+                receiptDate: date,
+                bcvRate: bcv,
+                receiptNumber: number,
+                receiptItems: items,
+                subtotalUsd: subtotal,
+                totalBs: total,
+                emitterName: previewEmitterName.textContent,
+                recipientName: previewRecipientName.textContent
+            };
+
+            const existingIndex = savedReceipts.findIndex(r => 
+                r.receiptNumber === savedReceipt.receiptNumber && 
+                r.emitterId === savedReceipt.emitterId &&
+                r.receiptDate === savedReceipt.receiptDate
+            );
+
+            if (existingIndex !== -1) {
+                savedReceipt.id = savedReceipts[existingIndex].id;
+                savedReceipts[existingIndex] = savedReceipt;
+            } else {
+                savedReceipts.push(savedReceipt);
+            }
+
+            saveToLocalStorage('medicalSavedReceipts', savedReceipts);
+            console.log("Recibo guardado exitosamente.");
+            return true;
+        };
+
+        const renderSavedReceiptsList = () => {
+            savedReceiptsList.innerHTML = '';
+            
+            if (savedReceipts.length === 0) {
+                noSavedReceiptsMsg.classList.remove('hidden');
+                return;
+            }
+            
+            noSavedReceiptsMsg.classList.add('hidden');
+            
+            const sortedReceipts = [...savedReceipts].sort((a, b) => b.id - a.id);
+            
+            sortedReceipts.forEach(receipt => {
+                const li = document.createElement('li');
+                li.className = 'p-3 bg-blue-50 rounded-md flex flex-col md:flex-row justify-between md:items-center';
+                
+                const receiptNumStr = receipt.receiptNumber ? `N°: ${receipt.receiptNumber}` : 'S/N';
+                const receiptDateStr = formatDateDDMMYY(receipt.receiptDate);
+
+                li.innerHTML = `
+                    <div>
+                        <span class="font-bold block text-blue-900">${receiptNumStr} (${receiptDateStr})</span>
+                        <span class="text-sm text-blue-700">Para: ${receipt.recipientName}</span>
+                        <span class="text-sm text-gray-600 block mt-1">Total: ${receipt.totalBs}</span>
+                    </div>
+                    <div class="mt-3 md:mt-0 flex-shrink-0">
+                        <button class="load-receipt-btn bg-green-100 text-green-800 px-3 py-1 rounded-md text-sm font-semibold hover:bg-green-200" data-id="${receipt.id}">Cargar</button>
+                        <button class="delete-receipt-btn bg-red-100 text-red-800 px-3 py-1 rounded-md text-sm font-semibold hover:bg-red-200 ml-2" data-id="${receipt.id}">Eliminar</button>
+                    </div>
+                `;
+                savedReceiptsList.appendChild(li);
+            });
+        };
+
+        const loadReceipt = (id) => {
+            const receipt = savedReceipts.find(r => r.id === id);
+            if (!receipt) {
+                console.error("No se encontró el recibo para cargar.");
+                return;
+            }
+
+            // 1. Limpiar estado
+            receiptItems = [];
+            
+            // 2. Repopular campos
+            receiptDateInput.value = receipt.receiptDate;
+            bcvRateInput.value = receipt.bcvRate;
+            receiptNumberInput.value = receipt.receiptNumber || '';
+
+            // 3. Repopular Emitter
+            const emitter = emitters.find(e => e.id === receipt.emitterId);
+            if (emitter) {
+                emitterInput.value = `${emitter.name} (${emitter.rif || emitter.desc})`;
+                emitterSelectId.value = emitter.id;
+            } else {
+                emitterInput.value = receipt.emitterName || 'Emisor no encontrado';
+                emitterSelectId.value = '';
+            }
+            
+            // 4. Repopular Recipient
+            const recipient = recipients.find(r => r.id === receipt.recipientId);
+            if (recipient) {
+                recipientInput.value = `${recipient.name} (${recipient.rif})`;
+                recipientSelectId.value = recipient.id;
+            } else {
+                recipientInput.value = receipt.recipientName || 'Receptor no encontrado';
+                recipientSelectId.value = '';
+            }
+            
+            // 5. Repopular items
+            receiptItems = receipt.receiptItems;
+            
+            // 6. Disparar eventos para actualizar UI
+            receiptDateInput.dispatchEvent(new Event('input'));
+            bcvRateInput.dispatchEvent(new Event('input'));
+            receiptNumberInput.dispatchEvent(new Event('input'));
+            emitterInput.dispatchEvent(new Event('input'));
+            recipientInput.dispatchEvent(new Event('input'));
+            
+            // 7. Re-renderizar (bcvRate 'input' ya lo hace)
+            renderReceiptPreview();
+
+            // 8. Cerrar modal
+            savedReceiptsModal.classList.add('hidden');
+        };
+
+        // ==================================================================
+        // ===== LÓGICA DE DESCARGA PDF (MODIFICADA PARA GUARDAR) =====
         // ==================================================================
         
         downloadPdfButton.addEventListener('click', () => {
@@ -1302,8 +1453,19 @@
             
             downloadPdfButton.disabled = true;
             downloadPdfButton.innerHTML = `
-                <i class="fas fa-spinner fa-spin mr-2"></i> Generando PDF...
+                <i class="fas fa-spinner fa-spin mr-2"></i> Procesando...
             `;
+            
+            // --- INICIO DE NUEVA LÓGICA DE GUARDADO ---
+            const receiptNumberForFile = receiptNumberInput.value.trim() || 
+                                     (previewReceiptNumberWrapper.style.display !== 'none' ? previewReceiptNumber.textContent.trim() : null);
+            
+            const savedOk = saveCurrentReceipt(receiptNumberForFile);
+            
+            if (!savedOk) {
+                console.warn("El recibo no se guardó en el historial por falta de datos, pero se intentará generar el PDF.");
+            }
+            // --- FIN DE NUEVA LÓGICA DE GUARDADO ---
             
             try {
                 // 1. Inicialización de jsPDF
@@ -1320,9 +1482,8 @@
                 const emitterRif = previewEmitterRif.textContent.trim();
                 const emitterDesc = previewEmitterDesc.textContent.trim();
                 const date = previewDate.textContent.trim();
-                const receiptNumber = previewReceiptNumberWrapper.style.display !== 'none' 
-                                      ? previewReceiptNumber.textContent.trim() 
-                                      : null;
+                // Usar la variable ya definida
+                const receiptNumber = receiptNumberForFile;
 
                 doc.setFont('Helvetica', 'bold');
                 doc.setFontSize(16);
@@ -1510,9 +1671,9 @@
                 doc.text('Este es un recibo informativo, no es una factura fiscal.', pageWidth / 2, yPos, { align: 'center' });
 
                 // --- 8. Guardar el PDF ---
-                const receiptNumberForFile = receiptNumber || 'S-N';
                 const receiptDateForFile = date.replace(/\//g, '-');
-                const fileName = `Recibo-${receiptNumberForFile}_${receiptDateForFile}.pdf`;
+                const rNFF_final = receiptNumberForFile || 'S-N';
+                const fileName = `Recibo-${rNFF_final}_${receiptDateForFile}.pdf`;
                 
                 doc.save(fileName);
                 
@@ -1545,21 +1706,73 @@
         // ==================================================================
 
 
-        // Eventos del botón de Limpiar
+        // Eventos del botón de Limpiar (MODIFICADO)
         resetButton.addEventListener('click', () => {
             resetModal.classList.remove('hidden');
         });
         cancelResetBtn.addEventListener('click', () => {
             resetModal.classList.add('hidden');
         });
+        
+        // Obtener la fecha de hoy para el reset
+        const today = new Date().toISOString().split('T')[0];
+        
         confirmResetBtn.addEventListener('click', () => {
             receiptItems = [];
-            renderReceiptPreview();
+            
+            // Limpiar campos principales
+            emitterInput.value = '';
+            recipientInput.value = '';
+            receiptDateInput.value = today; // Resetear a hoy
+            bcvRateInput.value = '';
+            receiptNumberInput.value = '';
+            
+            // Disparar eventos para limpiar la vista previa
+            emitterInput.dispatchEvent(new Event('input'));
+            recipientInput.dispatchEvent(new Event('input'));
+            receiptDateInput.dispatchEvent(new Event('input'));
+            bcvRateInput.dispatchEvent(new Event('input'));
+            receiptNumberInput.dispatchEvent(new Event('input'));
+
+            renderReceiptPreview(); // Esto limpia la tabla
             resetModal.classList.add('hidden');
         });
         
+
+        // ==================================================================
+        // ===== NUEVOS EVENT LISTENERS: Modal de Recibos Guardados =====
+        // ==================================================================
+        
+        viewSavedReceiptsBtn.addEventListener('click', () => {
+            renderSavedReceiptsList();
+            savedReceiptsModal.classList.remove('hidden');
+        });
+        
+        closeSavedReceiptsModalBtn.addEventListener('click', () => {
+            savedReceiptsModal.classList.add('hidden');
+        });
+
+        savedReceiptsList.addEventListener('click', (e) => {
+            const loadBtn = e.target.closest('.load-receipt-btn');
+            const deleteBtn = e.target.closest('.delete-receipt-btn');
+            
+            if (loadBtn) {
+                const id = parseInt(loadBtn.dataset.id);
+                loadReceipt(id);
+            }
+            
+            if (deleteBtn) {
+                const id = parseInt(deleteBtn.dataset.id);
+                // Eliminar sin confirmación (para mantener la simpleza)
+                savedReceipts = savedReceipts.filter(r => r.id !== id);
+                saveToLocalStorage('medicalSavedReceipts', savedReceipts);
+                renderSavedReceiptsList(); // Re-renderizar la lista
+            }
+        });
+
+        
         // --- INICIALIZACIÓN ---
-        const today = new Date().toISOString().split('T')[0];
+        // (La variable 'today' ya se definió para el modal de reseteo)
         receiptDateInput.value = today;
         serviceDateInput.value = today; 
         previewDate.textContent = new Date().toLocaleDateString('es-VE', { timeZone: 'America/Caracas' });
@@ -1575,5 +1788,3 @@
     </script>
 </body>
 </html>
-
-
