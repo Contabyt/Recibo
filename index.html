@@ -153,7 +153,8 @@
 
     <div class="container mx-auto p-4 lg:p-8">
         <header class="text-center mb-8 no-print">
-            <h1 class="text-4xl font-bold text-fuchsia-600 flex items-center justify-center"><i class="fas fa-file-invoice-dollar mr-3"></i>Servicios Médicos Prestados</h1>
+            <!-- TÍTULO AJUSTADO: Icono, Tamaño (text-2xl sm:text-3xl) y Color (text-purple-800) -->
+            <h1 class="text-2xl sm:text-3xl font-bold text-purple-800 flex items-center justify-center"><i class="fas fa-notes-medical mr-3"></i>Servicios Médicos Prestados</h1>
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1513,15 +1514,16 @@
                 yPos += 5;
                 
                 doc.setFont('Helvetica', 'normal');
-                doc.setFontSize(10);
+                // CAMBIO PDF: Aumentar tamaño de descripción del emisor
+                doc.setFontSize(11); // <-- AJUSTADO DE 10 a 11
                 doc.setTextColor(107, 33, 168); // purple-700
                 
-                // --- CAMBIO DE ORDEN PDF ---
+                // --- CAMBIO DE ORDEN PDF (Verificado) ---
                 doc.text(emitterDesc, margin, yPos);
                 yPos += 5;
                 
                 if (emitterRif) {
-                    doc.text(emitterRif, margin, yPos);
+                    doc.text(emitterRif, margin, yPos); // RIF ahora será 11pt
                 }
                 
                 doc.setTextColor(0, 0, 0);
@@ -1614,7 +1616,8 @@
                         1: { cellWidth: 20 }, // Fecha
                         2: { cellWidth: 'auto' }, // Nombres
                         3: { cellWidth: 28 }, // Servicio
-                        4: { cellWidth: 10, halign: 'center' }, // Cant.
+                        // AJUSTE PDF: Ancho de columna 'Cant.' aumentado de 10 a 12
+                        4: { cellWidth: 12, halign: 'center' }, // Cant. (Ajustado de 10 a 12)
                         5: { cellWidth: 20, halign: 'right' }, // P/U
                         6: { cellWidth: 20, halign: 'right' }, // Total $
                         7: { cellWidth: 25, halign: 'right' }  // Total Bs.
@@ -1665,12 +1668,13 @@
                 doc.setTextColor(0, 0, 0);
                 // --- CAMBIO DE ETIQUETA PDF ---
                 doc.text('Total ($)', labelX, textY);
-                doc.setFont('Helvetica', 'normal');
-                doc.text(subtotal, valueX, textY, { align: 'right' });
+                // CAMBIO PDF: Línea eliminada para mantener la negrita en el valor
+                // doc.setFont('Helvetica', 'normal'); 
+                doc.text(subtotal, valueX, textY, { align: 'right' }); // <-- Este valor ahora estará en negrita
                 textY += 6;
 
                 // --- CAMBIO: Tasa BCV no va en negrita ---
-                doc.setFont('Helvetica', 'normal'); 
+                doc.setFont('Helvetica', 'normal'); // <-- Esto resetea la negrita, está bien
                 doc.setTextColor(107, 33, 168); // purple-700
                 doc.text('Tasa BCV', labelX, textY);
                 doc.setFont('Helvetica', 'normal');
