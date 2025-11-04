@@ -1327,7 +1327,7 @@
             }
 
             const savedReceipt = {
-                id: Date.now(),
+                id: Date.now(), // Siempre crear un nuevo ID
                 emitterId,
                 recipientId,
                 receiptDate: date,
@@ -1340,21 +1340,14 @@
                 recipientName: previewRecipientName.textContent
             };
 
-            const existingIndex = savedReceipts.findIndex(r => 
-                r.receiptNumber === savedReceipt.receiptNumber && 
-                r.emitterId === savedReceipt.emitterId &&
-                r.receiptDate === savedReceipt.receiptDate
-            );
-
-            if (existingIndex !== -1) {
-                savedReceipt.id = savedReceipts[existingIndex].id;
-                savedReceipts[existingIndex] = savedReceipt;
-            } else {
-                savedReceipts.push(savedReceipt);
-            }
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Se elimina la búsqueda de recibos existentes.
+            // Simplemente se agrega el nuevo recibo al array.
+            savedReceipts.push(savedReceipt);
+            // --- FIN DE LA CORRECCIÓN ---
 
             saveToLocalStorage('medicalSavedReceipts', savedReceipts);
-            console.log("Recibo guardado exitosamente.");
+            console.log("Recibo guardado exitosamente como nueva entrada.");
             return true;
         };
 
@@ -1427,8 +1420,8 @@
                 recipientSelectId.value = '';
             }
             
-            // 5. Repopular items
-            receiptItems = receipt.receiptItems;
+            // 5. Repopular items (importante: hacer una copia profunda para evitar mutaciones)
+            receiptItems = JSON.parse(JSON.stringify(receipt.receiptItems));
             
             // 6. Disparar eventos para actualizar UI
             receiptDateInput.dispatchEvent(new Event('input'));
@@ -1462,8 +1455,13 @@
             
             const savedOk = saveCurrentReceipt(receiptNumberForFile);
             
-            if (!savedOk) {
+            if (!savedOk && receiptItems.length > 0) {
                 console.warn("El recibo no se guardó en el historial por falta de datos, pero se intentará generar el PDF.");
+            } else if (!savedOk) {
+                console.warn("No hay nada que guardar o descargar.");
+                downloadPdfButton.disabled = false;
+                downloadPdfButton.innerHTML = originalButtonHtml;
+                return; // No hacer nada si no hay items
             }
             // --- FIN DE NUEVA LÓGICA DE GUARDADO ---
             
